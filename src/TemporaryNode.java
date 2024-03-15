@@ -2,10 +2,15 @@
 // Coursework 2023/2024
 //
 // Submission by
-// YOUR_NAME_GOES_HERE
-// YOUR_STUDENT_ID_NUMBER_GOES_HERE
-// YOUR_EMAIL_GOES_HERE
+// Abdelrahmane Bekhli
+// 220011666
+// abdelrahmane.bekhli@city.ac.uk
 
+import java.net.Socket;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 
 // DO NOT EDIT starts
 interface TemporaryNodeInterface {
@@ -15,27 +20,98 @@ interface TemporaryNodeInterface {
 }
 // DO NOT EDIT ends
 
-
 public class TemporaryNode implements TemporaryNodeInterface {
 
+    private Socket socket;
+    private BufferedReader reader;
+    private BufferedWriter writer;
+
     public boolean start(String startingNodeName, String startingNodeAddress) {
-	// Implement this!
-	// Return true if the 2D#4 network can be contacted
-	// Return false if the 2D#4 network can't be contacted
-	return true;
+        try {
+            // Connect to the starting node
+            socket = new Socket(startingNodeAddress.split(":")[0], Integer.parseInt(startingNodeAddress.split(":")[1]));
+
+            // Initialize reader and writer
+            reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+
+            // Send START message
+            writer.write("START 1 " + startingNodeName + "\n");
+            writer.flush();
+
+            // Receive START message from the starting node
+            String startResponse = reader.readLine();
+            if (startResponse != null && startResponse.startsWith("START")) {
+                return true;
+            }
+
+        } catch (Exception e) {
+            System.err.println("Exception during node start: " + e);
+        }
+
+        return false;
     }
 
     public boolean store(String key, String value) {
-	// Implement this!
-	// Return true if the store worked
-	// Return false if the store failed
-	return true;
+        try {
+            if(key.split("\n").length >= 1) {
+                if(value.split("\n").length >= 1) {
+                    // Construct PUT? request message
+                    writer.write("PUT? " + key.split("\n").length + " " + value.split("\n").length + "\n" + key + value);
+                    writer.flush();
+
+                    // Receive response
+                    String response = reader.readLine();
+                    if (response != null && response.equals("SUCCESS")) {
+                        return true;
+                    } else {
+                        System.err.println("Store operation failed. Server response: " + response);
+                    }
+                } else{
+                    System.err.println("Error at Store: Invalid number of lines of value");
+                }
+            } else{
+                System.err.println("Error at Store: Invalid number of lines of key");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("Exception during store operation: " + e);
+        }
+        return false;
     }
 
     public String get(String key) {
-	// Implement this!
-	// Return the string if the get worked
-	// Return null if it didn't
-	return "Not implemented";
+        try {
+            if(key.split("\n").length >= 1) {
+                // Send GET? request
+                writer.write("GET? " + key.split("\n").length + "\n" + key + "\n");
+                writer.flush();
+                // Receive response
+                String response = reader.readLine();  // Read the response line
+                if (response != null && response.startsWith("VALUE")) {
+                    int numberOfLines = Integer.parseInt(response.split(" ")[1]);
+                    StringBuilder value = new StringBuilder();
+                    for (int i = 0; i < numberOfLines; i++) {
+                        String v = reader.readLine();
+                        value.append(v).append("\n");
+                    }
+                    //remove extra \n at the end of the value
+                    if (!value.isEmpty() && value.charAt(value.length() - 1) == '\n') {
+                        value.deleteCharAt(value.length() - 1);
+                    }
+                    return value.toString();
+                } else if (response != null && response.equals("NOPE")) {
+                    return null;
+                }
+            } else {
+                System.err.println("Error at Get: Invalid number of lines of key");
+            }
+
+        } catch (Exception e) {
+            System.err.println("Exception during get operation: " + e);
+        }
+
+        return null;
     }
 }
