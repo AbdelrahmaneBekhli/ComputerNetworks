@@ -118,12 +118,7 @@ public class FullNode implements FullNodeInterface {
         }
         String key = keyBuilder.toString();
         String value = valueBuilder.toString();
-        try {
-            byte[] b = HashID.computeHashID(value);
-            System.out.println(Arrays.toString(b));
-        } catch (Exception e){
-            System.out.println("hmmmmmmmmmmmm");
-        }
+        System.out.println(hexToDec(value));
         // Store the key-value pair
         dataStore.put(key.trim(), value);
         // Respond with success
@@ -132,7 +127,6 @@ public class FullNode implements FullNodeInterface {
     }
     private void retrieve(String[] parts, BufferedReader reader, BufferedWriter writer) {
         try {
-            boolean end = false;
             int keyLength = Integer.parseInt(parts[1]);
             StringBuilder value = new StringBuilder();
             for(int i = 0; i < keyLength; i++) {
@@ -148,15 +142,27 @@ public class FullNode implements FullNodeInterface {
                     writer.flush();
                 }
             }
-
-            // Print the key
-            //System.out.println("Received key: " + key);
         } catch (Exception e) {
-            try {
-                writer.write("NOPE");
-            } catch (IOException ex) {
-                throw new RuntimeException(ex);
-            }
+            System.out.println("Error at retrieve: " + e);
         }
+    }
+    private String hexToDec(String val){
+        StringBuilder hexString = new StringBuilder();
+        try {
+            // Compute the hash of the input string 'val' using the 'computeHashID' method
+            byte[] hashedData = HashID.computeHashID(val);
+            for (byte b : hashedData) {
+                // Convert the byte to a hexadecimal string
+                String hex = Integer.toHexString(0xff & b);
+                //if byte value < 16
+                if (hex.length() == 1) {
+                    hexString.append('0');
+                }
+                hexString.append(hex);
+            }
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+        return hexString.toString();
     }
 }
