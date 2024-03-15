@@ -1,8 +1,9 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 interface FullNodeInterface {
@@ -14,6 +15,7 @@ public class FullNode implements FullNodeInterface {
 
     private ServerSocket serverSocket;
     private final Map<String, String> dataStore = new HashMap<>();
+    private final Map<String, NodeInfo> networkMap = new HashMap<>();
 
     private boolean closed = false;
 
@@ -56,6 +58,7 @@ public class FullNode implements FullNodeInterface {
                 // Extract the protocol version and node name
                 String[] parts = startMessage.split(" ");
                 int protocolVersion = Integer.parseInt(parts[1]);
+                System.out.println("protocol " + protocolVersion );
                 String nodeName = parts[2];
 
                 // Respond with the corresponding START message
@@ -64,6 +67,8 @@ public class FullNode implements FullNodeInterface {
 
                 // Handle further communication with the connecting node
                 handleRequests(reader, writer);
+                updateNetworkMap(nodeName, clientSocket.getInetAddress().getHostAddress());
+                System.out.println("NETWORK: " + networkMap);
             } else {
                 // Invalid START message
                 System.err.println("Invalid START message received");
@@ -77,6 +82,7 @@ public class FullNode implements FullNodeInterface {
     }
 
     private void handleRequests(BufferedReader reader, BufferedWriter writer) {
+        System.out.println("NETWORK MAP: " + networkMap);
         try {
             // Handle requests from the connecting node
             String request;
@@ -164,5 +170,8 @@ public class FullNode implements FullNodeInterface {
             throw new RuntimeException(ex);
         }
         return hexString.toString();
+    }
+    private synchronized void updateNetworkMap(String nodeName, String nodeAddress) {
+        networkMap.put(nodeName, new NodeInfo(nodeName, nodeAddress));
     }
 }
