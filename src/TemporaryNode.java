@@ -125,4 +125,18 @@ public class TemporaryNode implements TemporaryNodeInterface {
         }
         return false;
     }
+    public void end(String reason){
+        try{
+            writer.write("END " + reason + "\n");
+            writer.flush();
+
+            String response = reader.readLine();  // Read the response line
+            if (response != null && response.startsWith("END")){
+                socket.close();
+            }
+        } catch(Exception e){
+            System.err.println("Exception during end operation: " + e);
+        }
+    }
+
 }
