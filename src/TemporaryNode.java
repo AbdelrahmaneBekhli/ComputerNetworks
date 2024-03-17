@@ -48,7 +48,6 @@ public class TemporaryNode implements TemporaryNodeInterface {
         } catch (Exception e) {
             System.err.println("Exception during node start: " + e);
         }
-
         return false;
     }
 
@@ -75,7 +74,6 @@ public class TemporaryNode implements TemporaryNodeInterface {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
             System.err.println("Exception during store operation: " + e);
         }
         return false;
@@ -111,7 +109,20 @@ public class TemporaryNode implements TemporaryNodeInterface {
         } catch (Exception e) {
             System.err.println("Exception during get operation: " + e);
         }
-
         return null;
+    }
+    public boolean echo(){
+        try {
+            writer.write("ECHO?\n");
+            writer.flush();
+
+            String response = reader.readLine();  // Read the response line
+            if (response != null && response.startsWith("OHCE")){
+                return true;
+            }
+        } catch (Exception e) {
+            System.err.println("Exception during echo operation: " + e);
+        }
+        return false;
     }
 }
