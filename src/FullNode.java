@@ -98,6 +98,9 @@ public class FullNode implements FullNodeInterface {
                     case "GET?":
                         retrieve(parts, reader, writer);
                         break;
+                    case "ECHO?":
+                        writer.write("OHCE\n");
+                        writer.flush();
                     default:
                         System.err.println("Invalid request received");
                         // Respond with an error
@@ -125,6 +128,14 @@ public class FullNode implements FullNodeInterface {
         String key = keyBuilder.toString();
         String value = valueBuilder.toString();
         System.out.println(hexToDec(value));
+        System.out.println(hexToDec("martin.brain@city.ac.uk:MyCoolImplementation,1.41,test-node-2\n"));
+        String v = value;
+        String v2 = "martin.brain@city.ac.uk:MyCoolImplementation,1.41,test-node-2\n";
+        try {
+            System.out.println(HashID.getDistance(HashID.computeHashID(v),HashID.computeHashID(v2) ));
+        } catch (Exception e){
+            System.out.println(e);
+        }
         // Store the key-value pair
         dataStore.put(key.trim(), value);
         // Respond with success
