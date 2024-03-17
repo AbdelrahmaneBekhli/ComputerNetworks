@@ -1,9 +1,7 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 interface FullNodeInterface {
@@ -42,23 +40,25 @@ public class FullNode implements FullNodeInterface {
                 Thread handlerThread = new Thread(() -> handleConnection(clientSocket));
                 handlerThread.start();
             }
+            System.out.println("hey");
         } catch (Exception e) {
-            System.err.println("Exception during incoming connection handling: " + e);
+            if(!closed) {
+                System.err.println("Exception during incoming connection handling: " + e);
+            }
         }
     }
 
     private void handleConnection(Socket clientSocket) {
-        try (
-                BufferedReader reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()))
-        ) {
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
+
             // Receive START message from the connecting node
             String startMessage = reader.readLine();
             if (startMessage != null && startMessage.startsWith("START")) {
                 // Extract the protocol version and node name
                 String[] parts = startMessage.split(" ");
                 int protocolVersion = Integer.parseInt(parts[1]);
-                System.out.println("protocol " + protocolVersion );
                 String nodeName = parts[2];
 
                 // Respond with the corresponding START message
@@ -68,21 +68,17 @@ public class FullNode implements FullNodeInterface {
                 // Handle further communication with the connecting node
                 handleRequests(reader, writer);
                 updateNetworkMap(nodeName, clientSocket.getInetAddress().getHostAddress());
-                System.out.println("NETWORK: " + networkMap);
             } else {
                 // Invalid START message
                 System.err.println("Invalid START message received");
             }
 
-            // Close the connection
-            clientSocket.close();
         } catch (Exception e) {
             System.err.println("Exception during connection handling: " + e);
         }
     }
 
     private void handleRequests(BufferedReader reader, BufferedWriter writer) {
-        System.out.println("NETWORK MAP: " + networkMap);
         try {
             // Handle requests from the connecting node
             String request;
@@ -101,6 +97,17 @@ public class FullNode implements FullNodeInterface {
                     case "ECHO?":
                         writer.write("OHCE\n");
                         writer.flush();
+                        break;
+                    case "END":
+                        closed = true;
+                        writer.write("END\n");
+                        writer.flush();
+                        StringBuilder message = new StringBuilder();
+                        for (int i = 1; i < parts.length; i++){
+                            message.append(parts[i]).append(" ");
+                        }
+                        System.err.println("Closed connection with reason: " + message);
+                        serverSocket.close();
                         break;
                     default:
                         System.err.println("Invalid request received: " + command);
@@ -128,15 +135,6 @@ public class FullNode implements FullNodeInterface {
         }
         String key = keyBuilder.toString();
         String value = valueBuilder.toString();
-        System.out.println(hexToDec(value));
-        System.out.println(hexToDec("martin.brain@city.ac.uk:MyCoolImplementation,1.41,test-node-2\n"));
-        String v = value;
-        String v2 = "martin.brain@city.ac.uk:MyCoolImplementation,1.41,test-node-2\n";
-        try {
-            System.out.println(HashID.getDistance(HashID.computeHashID(v),HashID.computeHashID(v2) ));
-        } catch (Exception e){
-            System.out.println(e);
-        }
         // Store the key-value pair
         dataStore.put(key.trim(), value);
         // Respond with success
