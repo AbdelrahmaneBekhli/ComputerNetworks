@@ -101,8 +101,9 @@ public class FullNode implements FullNodeInterface {
                     case "ECHO?":
                         writer.write("OHCE\n");
                         writer.flush();
+                        break;
                     default:
-                        System.err.println("Invalid request received");
+                        System.err.println("Invalid request received: " + command);
                         // Respond with an error
                         writer.write("ERROR\n");
                         writer.flush();
