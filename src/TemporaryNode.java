@@ -25,6 +25,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
     private Socket socket;
     private BufferedReader reader;
     private BufferedWriter writer;
+    private static boolean open = true;
 
     public boolean start(String startingNodeName, String startingNodeAddress) {
         try {
@@ -125,18 +126,34 @@ public class TemporaryNode implements TemporaryNodeInterface {
         }
         return false;
     }
+
+    public Boolean notifyRequest(String startingNodeName, String startingNodeAddress){
+        try{
+            writer.write("NOTIFY?\n" + startingNodeName + "\n" + startingNodeAddress + "\n");
+            writer.flush();
+
+            String response = reader.readLine();  // Read the response line
+            if (response.startsWith("NOTIFIED")){
+                return true;
+            }
+        } catch (Exception e){
+            System.out.println("Exception during notify operation: " + e);
+        }
+        return false;
+    }
+
     public void end(String reason){
         try{
             writer.write("END " + reason + "\n");
             writer.flush();
 
             String response = reader.readLine();  // Read the response line
-            if (response != null && response.startsWith("END")){
+            if (response.startsWith("END")){
                 socket.close();
+                open = false;
             }
         } catch(Exception e){
             System.err.println("Exception during end operation: " + e);
         }
     }
-
 }
