@@ -142,6 +142,25 @@ public class TemporaryNode implements TemporaryNodeInterface {
         return false;
     }
 
+    public void nearest(String key){
+        try{
+            String hashedKey = HashID.hexHash(key + "\n");
+            writer.write("NEAREST? " + hashedKey + "\n");
+            writer.flush();
+            
+            String response = reader.readLine();
+            if(response.startsWith("NODES")){
+                int nodesNum = Integer.parseInt(response.split(" ")[1]);
+                System.out.println("NODES " + nodesNum);
+                for(int i = 0; i < nodesNum * 2; i++){
+                    System.out.println(reader.readLine());
+                }
+            }
+        } catch (Exception e){
+            System.err.println("Exception during nearest operation: " + e);
+        }
+    }
+
     public void end(String reason){
         try{
             writer.write("END " + reason + "\n");
@@ -153,7 +172,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                 open = false;
             }
         } catch(Exception e){
-            System.err.println("Exception during end operation: " + e);
+            System.err.println(e);
         }
     }
 }
