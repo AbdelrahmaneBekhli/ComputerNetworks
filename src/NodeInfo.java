@@ -1,10 +1,11 @@
 class NodeInfo {
+    private final int ID;
     private final String nodeName;
     private final int port;
-
     private final String StartTime;
 
-    public NodeInfo(String nodeName, int port, String startTime) {
+    public NodeInfo(int ID, String nodeName, int port, String startTime) {
+        this.ID = ID;
         this.nodeName = nodeName;
         this.port = port;
         this.StartTime = startTime;
@@ -19,5 +20,8 @@ class NodeInfo {
     }
     public String getStartTime() {
         return StartTime;
+    }
+    public int getID() {
+        return ID;
     }
 }
