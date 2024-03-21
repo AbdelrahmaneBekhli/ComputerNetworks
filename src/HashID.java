@@ -25,18 +25,15 @@ public class HashID {
 		}
 	}
 
-	public static int getDistance(String value1, String value2) {
-
-		String v1 = hexHash(value1);
-		String v2 = hexHash(value2);
+	public static int getDistance(String Hexvalue1, String Hexvalue2) {
 		char char1 = ' ';
 		char char2 = ' ';
 		int counter = 0;
 
-		for (int i = 0; i < v1.length(); i++) {
-			if (v1.charAt(i) != v2.charAt(i)) {
-				char1 = v1.charAt(i);
-				char2 = v2.charAt(i);
+		for (int i = 0; i < Hexvalue1.length(); i++) {
+			if (Hexvalue1.charAt(i) != Hexvalue2.charAt(i)) {
+				char1 = Hexvalue1.charAt(i);
+				char2 = Hexvalue2.charAt(i);
 				break;
 			} else {
 				counter++;
