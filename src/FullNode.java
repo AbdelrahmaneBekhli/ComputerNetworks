@@ -5,6 +5,7 @@
 // Abdelrahmane Bekhli
 // 220011666
 // abdelrahmane.bekhli@city.ac.uk
+
 import org.w3c.dom.Node;
 
 import java.io.*;
@@ -12,7 +13,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.sql.SQLOutput;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -60,9 +60,9 @@ public class FullNode implements FullNodeInterface {
         }
     }
 
-    private void activeMapping(){
+    private void activeMapping(String nodeAddress){
         networkMap = new HashMap<>();
-        NodeInfo thisNode = new NodeInfo(serverSocket.getLocalPort(), name, portNumber, getCurrentTime());
+        NodeInfo thisNode = new NodeInfo(serverSocket.getLocalPort(), name, portNumber, getCurrentTime(), nodeAddress);
         ArrayList<NodeInfo> list = new ArrayList<>();
         list.add(thisNode);
         networkMap.put(0, list);
@@ -80,7 +80,7 @@ public class FullNode implements FullNodeInterface {
                     //checks if the connection was successful
                     if(sendStart(reader, writer)) {
                         if (notifyNode(reader, writer)) {
-                            updateNetworkMap(socket,connectingNode, port);
+                            updateNetworkMap(socket,connectingNode, port, IpAddress+":"+port);
                         }
                     }
                 } catch (Exception e) {
@@ -94,7 +94,7 @@ public class FullNode implements FullNodeInterface {
     public void handleIncomingConnections(String startingNodeName, String startingNodeAddress) {
         try {
             name = startingNodeName;
-            activeMapping();
+            activeMapping(startingNodeAddress);
             System.out.println("Listening for incoming connections on " + IpAddress + ":" + portNumber);
             while (!closed) {
                 Socket clientSocket = serverSocket.accept();
@@ -126,8 +126,7 @@ public class FullNode implements FullNodeInterface {
     }
 
     private void notified(String nodeName, String nodeAddress, Socket s){
-        updateNetworkMap(s, nodeName, Integer.parseInt(nodeAddress.split(":")[1]));
-        printNetworkMap();
+        updateNetworkMap(s, nodeName, Integer.parseInt(nodeAddress.split(":")[1]), nodeAddress);
     }
 
     private boolean sendStart(BufferedReader reader, BufferedWriter writer){
@@ -211,6 +210,16 @@ public class FullNode implements FullNodeInterface {
                         writer.write("NOTIFIED\n");
                         writer.flush();
                         break;
+                    case "NEAREST?":
+                        String key = parts[1];
+                        ArrayList<NodeInfo>nearestNodes = findNearest(key , 3);
+                        writer.write("NODES " + nearestNodes.size() + "\n");
+                        for (NodeInfo node : nearestNodes) {
+                            writer.write(node.getNodeName() + "\n");
+                            writer.write(node.getAddress() + "\n");
+                        }
+                        writer.flush();
+                        break;
                     case "END":
                         writer.write("END\n");
                         writer.flush();
@@ -279,6 +288,45 @@ public class FullNode implements FullNodeInterface {
         }
     }
 
+    private ArrayList<NodeInfo> findNearest(String key, int nodeCount) {
+        ArrayList<ArrayList<Object>> distances = new ArrayList<>();
+        for (Map.Entry<Integer, ArrayList<NodeInfo>> entry : networkMap.entrySet()) {
+            ArrayList<NodeInfo> nodeList = entry.getValue();
+            for (NodeInfo node : nodeList) {
+                int distance = HashID.getDistance(HashID.hexHash(node.getNodeName() + "\n"), key);
+                ArrayList<Object> pair = new ArrayList<>();
+                pair.add(distance);
+                pair.add(node);
+                distances.add(pair);
+            }
+        }
+        // Define a custom comparator to compare distances
+        Comparator<ArrayList<Object>> comparator = new Comparator<ArrayList<Object>>() {
+            @Override
+            public int compare(ArrayList<Object> pair1, ArrayList<Object> pair2) {
+                int distance1 = (int) pair1.getFirst();
+                int distance2 = (int) pair2.getFirst();
+                return Integer.compare(distance1, distance2);
+            }
+        };
+
+        // Sort the distances ArrayList using the custom comparator
+        distances.sort(comparator);
+
+        // Create a new array containing the first 'nodeCount' nodes
+        ArrayList<NodeInfo> nearestNodes = new ArrayList<>();
+        int count = 0;
+        for (ArrayList<Object> pair : distances) {
+            nearestNodes.add((NodeInfo) pair.get(1));
+            count++;
+            if (count == nodeCount) {
+                break;
+            }
+        }
+        return nearestNodes;
+
+    }
+
     private String getCurrentTime(){
         LocalDateTime currentTime = LocalDateTime.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss");
@@ -297,7 +345,7 @@ public class FullNode implements FullNodeInterface {
         return 0;
     }
 
-    private void sendEnd(String nodeName) {
+    public void sendEnd(String nodeName) {
         int ID = findID(nodeName);
         if(ID != 0) {
             for (Socket s : connectedSockets) {
@@ -332,9 +380,9 @@ public class FullNode implements FullNodeInterface {
         return false;
     }
 
-    private void updateNetworkMap(Socket socket, String nodeName, int port) {
+    private void updateNetworkMap(Socket socket, String nodeName, int port, String address) {
         //if(Objects.equals(nodeName.split(":")[1], "FullNode")) {
-            NodeInfo node = new NodeInfo(socket.getPort(), nodeName, port, getCurrentTime());
+            NodeInfo node = new NodeInfo(socket.getPort(), nodeName, port, getCurrentTime(), address);
             ArrayList<NodeInfo> list = new ArrayList<>();
             list.add(node);
             if (!searchSocket(socket.getPort())){
@@ -343,7 +391,7 @@ public class FullNode implements FullNodeInterface {
 
             //find distance
             try {
-                int current_dist = HashID.getDistance(name + "\n", nodeName + "\n");
+                int current_dist = HashID.getDistance(HashID.hexHash(name + "\n"), HashID.hexHash(nodeName + "\n"));
                 if(current_dist != 0) {
                     // if node is not in network map
                     if (networkMap.get(current_dist) == null) {
