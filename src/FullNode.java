@@ -5,7 +5,6 @@
 // Abdelrahmane Bekhli
 // 220011666
 // abdelrahmane.bekhli@city.ac.uk
-
 import java.io.*;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -18,16 +17,19 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+// DO NOT EDIT starts
 interface FullNodeInterface {
-    boolean listen(String ipAddress, int portNumber);
-    void handleIncomingConnections(String startingNodeName, String startingNodeAddress);
+    public boolean listen(String ipAddress, int portNumber);
+    public void handleIncomingConnections(String startingNodeName, String startingNodeAddress);
 }
+// DO NOT EDIT ends
+
 
 public class FullNode implements FullNodeInterface {
     private ServerSocket serverSocket;
     private final Map<String, String> dataStore = new HashMap<>();
     private final Map<Integer, ArrayList<NodeInfo>> networkMap = new HashMap<>();
-    private final String IPaddress = "127.0.0.1";
+    private final String IpAddress = "127.0.0.1";
     private int portNumber = 0;
     private String name = "";
     private String connectingNode = "";
@@ -56,6 +58,33 @@ public class FullNode implements FullNodeInterface {
         }
     }
 
+    private void activeMapping(){
+        System.out.println("Scanning for nodes on port 3000 - 5000");
+        for (int port = 3000; port <= 5000; port++) {
+            if (port != portNumber & !(checkUsedPort(port))) {
+                try {
+                    // Create a socket and attempt to connect to the target host and port
+                    Socket socket = new Socket();
+                    socket.connect(new InetSocketAddress(IpAddress, port), 500);
+                    // Initialize reader and writer
+                    BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+                    //checks if the connection was successful
+                    if(sendStart(reader, writer)) {
+                        if (notifyNode(reader, writer)) {
+                            updateNetworkMap(connectingNode, port);
+                        }
+                    }
+                } catch (Exception e) {
+                    //ignore offline nodes
+                }
+            }
+        }
+
+        System.out.println("Scan complete!");
+    }
+
     public void handleIncomingConnections(String startingNodeName, String startingNodeAddress) {
         try {
             name = startingNodeName;
@@ -63,30 +92,7 @@ public class FullNode implements FullNodeInterface {
             ArrayList<NodeInfo> list = new ArrayList<>();
             list.add(thisNode);
             networkMap.put(0, list);
-
-
-            System.out.println("Scanning for nodes on port 3000 - 5000");
-            for (int port = 3000; port <= 5000; port++) {
-                if (port != portNumber & !(checkUsedPort(port))) {
-                    try {
-                        // Create a socket and attempt to connect to the target host and port
-                        Socket socket = new Socket();
-                        socket.connect(new InetSocketAddress(IPaddress, port), 500);
-                        // Initialize reader and writer
-                        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-                        BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-
-                        //checks if the connection was successful
-                        if(sendStart(reader, writer, startingNodeName)){
-                            updateNetworkMap(connectingNode, port);
-                        }
-                    } catch (IOException e) {
-                        continue;
-                    }
-                }
-            }
-
-            System.out.println("Scan complete!");
+            activeMapping();
             printNetworkMap();
             while (!closed) {
                 Socket clientSocket = serverSocket.accept();
@@ -101,7 +107,28 @@ public class FullNode implements FullNodeInterface {
         }
     }
 
-    private boolean sendStart(BufferedReader reader, BufferedWriter writer, String name){
+    private boolean notifyNode(BufferedReader reader, BufferedWriter writer){
+        try{
+            writer.write("NOTIFY?\n" + name + "\n" + IpAddress + ":" + portNumber + "\n");
+            writer.flush();
+
+            String response = reader.readLine();
+            if(response.startsWith("NOTIFIED")){
+                return true;
+            }
+
+        } catch (Exception e){
+            System.err.println("Exception during notify node: " + e);
+        }
+        return false;
+    }
+
+    private void notified(String nodeName, String nodeAddress){
+        updateNetworkMap(nodeName, Integer.parseInt(nodeAddress.split(":")[1]));
+        printNetworkMap();
+    }
+
+    private boolean sendStart(BufferedReader reader, BufferedWriter writer){
         try {
             writer.write("START 1 "+ name + "\n");
             writer.flush();
@@ -113,7 +140,7 @@ public class FullNode implements FullNodeInterface {
                 return true;
             }
         } catch (Exception e){
-            System.out.println(e);
+            System.out.println("Exception during sending start request: " + e);
         }
         return false;
     }
@@ -125,7 +152,7 @@ public class FullNode implements FullNodeInterface {
             if (startMessage.startsWith("START")) {
                 // Respond with the corresponding START message
                 writer.write("START 1 " + name + "\n");
-                writer.flush();;
+                writer.flush();
                 return true;
             } else {
                 // Invalid START message
@@ -178,6 +205,7 @@ public class FullNode implements FullNodeInterface {
                     case "NOTIFY?":
                         String nodeName = reader.readLine();
                         String nodeAddress = reader.readLine();
+                        notified(nodeName, nodeAddress);
                         writer.write("NOTIFIED\n");
                         writer.flush();
                         break;
@@ -232,7 +260,7 @@ public class FullNode implements FullNodeInterface {
             // Initialization
             int keyLength = Integer.parseInt(parts[1]);
             StringBuilder value = new StringBuilder();
-            //get value of each key
+            // Get value of each key
             for(int i = 0; i < keyLength; i++) {
                 String key = reader.readLine();
                 if (dataStore.containsKey(key)) {
