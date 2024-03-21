@@ -212,7 +212,7 @@ public class FullNode implements FullNodeInterface {
                         break;
                     case "NEAREST?":
                         String key = parts[1];
-                        ArrayList<NodeInfo>nearestNodes = findNearest(key , 3);
+                        ArrayList<NodeInfo>nearestNodes = findNearest(key);
                         writer.write("NODES " + nearestNodes.size() + "\n");
                         for (NodeInfo node : nearestNodes) {
                             writer.write(node.getNodeName() + "\n");
@@ -258,11 +258,26 @@ public class FullNode implements FullNodeInterface {
         }
         String key = keyBuilder.toString();
         String value = valueBuilder.toString();
-        // Store the key-value pair
-        dataStore.put(key.trim(), value);
-        // Respond with success
-        writer.write("SUCCESS\n");
-        writer.flush();
+        ArrayList<NodeInfo> nearestNodes = findNearest(key);
+        boolean closet = false;
+        for(NodeInfo n: nearestNodes) {
+            if (Objects.equals(n.getNodeName(), name) && n.getPort() == portNumber) {
+                closet = true;
+                break;
+                // Store the key-value pair
+            }
+        }
+            if (closet) {
+                dataStore.put(key.trim(), value);
+                // Respond with success
+                writer.write("SUCCESS\n");
+                writer.flush();
+            } else {
+                // Respond with FAILED
+                writer.write("FAILED\n");
+                writer.flush();
+            }
+
     }
     private void retrieve(String[] parts, BufferedReader reader, BufferedWriter writer) {
         try {
@@ -288,7 +303,7 @@ public class FullNode implements FullNodeInterface {
         }
     }
 
-    private ArrayList<NodeInfo> findNearest(String key, int nodeCount) {
+    private ArrayList<NodeInfo> findNearest(String key) {
         ArrayList<ArrayList<Object>> distances = new ArrayList<>();
         for (Map.Entry<Integer, ArrayList<NodeInfo>> entry : networkMap.entrySet()) {
             ArrayList<NodeInfo> nodeList = entry.getValue();
@@ -319,7 +334,7 @@ public class FullNode implements FullNodeInterface {
         for (ArrayList<Object> pair : distances) {
             nearestNodes.add((NodeInfo) pair.get(1));
             count++;
-            if (count == nodeCount) {
+            if (count == 3) {
                 break;
             }
         }
@@ -381,7 +396,7 @@ public class FullNode implements FullNodeInterface {
     }
 
     private void updateNetworkMap(Socket socket, String nodeName, int port, String address) {
-        //if(Objects.equals(nodeName.split(":")[1], "FullNode")) {
+        if(Objects.equals(nodeName.split(":")[1], "FullNode")) {
             NodeInfo node = new NodeInfo(socket.getPort(), nodeName, port, getCurrentTime(), address);
             ArrayList<NodeInfo> list = new ArrayList<>();
             list.add(node);
@@ -428,7 +443,7 @@ public class FullNode implements FullNodeInterface {
                 System.out.println("Error at update Network map: " + e);
             }
 
-        //}
+        }
     }
 
     private void removeNode(int toRemove) {
