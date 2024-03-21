@@ -5,17 +5,18 @@
 // Abdelrahmane Bekhli
 // 220011666
 // abdelrahmane.bekhli@city.ac.uk
+import org.w3c.dom.Node;
+
 import java.io.*;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.sql.SQLOutput;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 // DO NOT EDIT starts
 interface FullNodeInterface {
@@ -28,11 +29,12 @@ interface FullNodeInterface {
 public class FullNode implements FullNodeInterface {
     private ServerSocket serverSocket;
     private final Map<String, String> dataStore = new HashMap<>();
-    private final Map<Integer, ArrayList<NodeInfo>> networkMap = new HashMap<>();
-    private final String IpAddress = "127.0.0.1";
+    private Map<Integer, ArrayList<NodeInfo>> networkMap;
+    private String IpAddress = "127.0.0.1";
     private int portNumber = 0;
     private String name = "";
     private String connectingNode = "";
+    private final ArrayList<Socket> connectedSockets = new ArrayList<>();
     private boolean closed = false;
     private final int[] usedPorts = new int[]{5040, 5939, 7680};
 
@@ -50,7 +52,7 @@ public class FullNode implements FullNodeInterface {
             // Open a server socket to listen for incoming connections
             serverSocket = new ServerSocket(portNumber, 50, InetAddress.getByName(ipAddress));
             this.portNumber = portNumber;
-            System.out.println("Listening for incoming connections on " + ipAddress + ":" + portNumber);
+            this.IpAddress = ipAddress;
             return true;
         } catch (Exception e) {
             System.err.println("Exception while setting up server socket: " + e);
@@ -59,6 +61,11 @@ public class FullNode implements FullNodeInterface {
     }
 
     private void activeMapping(){
+        networkMap = new HashMap<>();
+        NodeInfo thisNode = new NodeInfo(serverSocket.getLocalPort(), name, portNumber, getCurrentTime());
+        ArrayList<NodeInfo> list = new ArrayList<>();
+        list.add(thisNode);
+        networkMap.put(0, list);
         System.out.println("Scanning for nodes on port 3000 - 5000");
         for (int port = 3000; port <= 5000; port++) {
             if (port != portNumber & !(checkUsedPort(port))) {
@@ -73,7 +80,7 @@ public class FullNode implements FullNodeInterface {
                     //checks if the connection was successful
                     if(sendStart(reader, writer)) {
                         if (notifyNode(reader, writer)) {
-                            updateNetworkMap(connectingNode, port);
+                            updateNetworkMap(socket,connectingNode, port);
                         }
                     }
                 } catch (Exception e) {
@@ -81,19 +88,14 @@ public class FullNode implements FullNodeInterface {
                 }
             }
         }
-
         System.out.println("Scan complete!");
     }
 
     public void handleIncomingConnections(String startingNodeName, String startingNodeAddress) {
         try {
             name = startingNodeName;
-            NodeInfo thisNode = new NodeInfo(name, portNumber, getCurrentTime());
-            ArrayList<NodeInfo> list = new ArrayList<>();
-            list.add(thisNode);
-            networkMap.put(0, list);
             activeMapping();
-            printNetworkMap();
+            System.out.println("Listening for incoming connections on " + IpAddress + ":" + portNumber);
             while (!closed) {
                 Socket clientSocket = serverSocket.accept();
                 // Start a new thread to handle the connection
@@ -123,8 +125,8 @@ public class FullNode implements FullNodeInterface {
         return false;
     }
 
-    private void notified(String nodeName, String nodeAddress){
-        updateNetworkMap(nodeName, Integer.parseInt(nodeAddress.split(":")[1]));
+    private void notified(String nodeName, String nodeAddress, Socket s){
+        updateNetworkMap(s, nodeName, Integer.parseInt(nodeAddress.split(":")[1]));
         printNetworkMap();
     }
 
@@ -172,7 +174,7 @@ public class FullNode implements FullNodeInterface {
 
             // Receive START message from the connecting node
             if (checkStart(reader, writer)){
-                handleRequests(reader, writer);
+                handleRequests(reader, writer, clientSocket);
             } else {
                 // Invalid START message
                 System.err.println("Invalid START message received");
@@ -182,7 +184,7 @@ public class FullNode implements FullNodeInterface {
         }
     }
 
-    private void handleRequests(BufferedReader reader, BufferedWriter writer) {
+    private void handleRequests(BufferedReader reader, BufferedWriter writer, Socket socket) {
         try {
             // Handle requests from the connecting node
             String request;
@@ -205,20 +207,18 @@ public class FullNode implements FullNodeInterface {
                     case "NOTIFY?":
                         String nodeName = reader.readLine();
                         String nodeAddress = reader.readLine();
-                        notified(nodeName, nodeAddress);
+                        notified(nodeName, nodeAddress, socket);
                         writer.write("NOTIFIED\n");
                         writer.flush();
                         break;
                     case "END":
-                        closed = true;
                         writer.write("END\n");
                         writer.flush();
                         StringBuilder message = new StringBuilder();
                         for (int i = 1; i < parts.length; i++){
                             message.append(parts[i]).append(" ");
                         }
-                        System.err.println("Closed connection with reason: " + message);
-                        serverSocket.close();
+                        removeNode(socket.getPort());
                         break;
                     default:
                         System.err.println("Invalid request received: " + command);
@@ -229,7 +229,7 @@ public class FullNode implements FullNodeInterface {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Exception during request handling: " + e);
+            System.out.println("Exception during connection handling requests: " + e);
         }
     }
 
@@ -285,49 +285,127 @@ public class FullNode implements FullNodeInterface {
         return currentTime.format(formatter);
     }
 
-    private synchronized void updateNetworkMap(String nodeName, int port) {
+    private int findID(String nodeName){
+        for (Map.Entry<Integer, ArrayList<NodeInfo>> entry : networkMap.entrySet()) {
+            ArrayList<NodeInfo> nodeList = entry.getValue();
+            for (NodeInfo node : nodeList) {
+                if (Objects.equals(node.getNodeName(), nodeName)) {
+                    return node.getID();
+                }
+            }
+        }
+        return 0;
+    }
+
+    private void sendEnd(String nodeName) {
+        int ID = findID(nodeName);
+        if(ID != 0) {
+            for (Socket s : connectedSockets) {
+                if (s.getPort() == ID) {
+                    try {
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(s.getInputStream()));
+                        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(s.getOutputStream()));
+
+                        writer.write("END User Disconnected\n");
+                        writer.flush();
+
+                        String response = reader.readLine();  // Read the response line
+                        if (response.startsWith("END")) {
+                            s.close();
+                            connectedSockets.remove(s);
+                            removeNode(ID);
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Exception during Send End: " + e);
+                    }
+                }
+            }
+        }
+    }
+
+    private boolean searchSocket(int port){
+        for(Socket s: connectedSockets){
+            if(s.getPort() == port){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void updateNetworkMap(Socket socket, String nodeName, int port) {
         //if(Objects.equals(nodeName.split(":")[1], "FullNode")) {
-            NodeInfo node = new NodeInfo(nodeName, port, getCurrentTime());
+            NodeInfo node = new NodeInfo(socket.getPort(), nodeName, port, getCurrentTime());
             ArrayList<NodeInfo> list = new ArrayList<>();
             list.add(node);
+            if (!searchSocket(socket.getPort())){
+                connectedSockets.add(socket);
+            }
 
             //find distance
             try {
                 int current_dist = HashID.getDistance(name + "\n", nodeName + "\n");
-                // if node is not in network map
-                if (networkMap.get(current_dist) == null) {
-                    networkMap.put(current_dist, list);
-                }
-                // If direction (distance) has less than 3 nodes in it
-                else if (networkMap.get(current_dist).size() < 3) {
-                    networkMap.get(current_dist).add(node);
-                }
-                // remove the shortest running node
-                else {
-                    // Initialization
-                    NodeInfo toRemove = null;
-                    LocalTime minLastRunTime = LocalTime.MAX;
-
-                    // find node with the shortest time
-                    for (NodeInfo n : networkMap.get(current_dist)) {
-                        String nodeTimeString = n.getStartTime();
-                        LocalTime nodeTime = LocalTime.parse(nodeTimeString, DateTimeFormatter.ofPattern("HH:mm:ss"));
-
-                        if (nodeTime.isBefore(minLastRunTime)) {
-                            minLastRunTime = nodeTime;
-                            toRemove = n;
-                        }
+                if(current_dist != 0) {
+                    // if node is not in network map
+                    if (networkMap.get(current_dist) == null) {
+                        networkMap.put(current_dist, list);
                     }
-                    // remove node
-                    if (toRemove != null) {
-                        networkMap.get(current_dist).remove(toRemove);
+                    // If direction (distance) has less than 3 nodes in it
+                    else if (networkMap.get(current_dist).size() < 3) {
                         networkMap.get(current_dist).add(node);
+                    }
+                    // remove the shortest running node
+                    else {
+                        // Initialization
+                        NodeInfo toRemove = null;
+                        LocalTime minLastRunTime = LocalTime.MAX;
+
+                        // find node with the shortest time
+                        for (NodeInfo n : networkMap.get(current_dist)) {
+                            String nodeTimeString = n.getStartTime();
+                            LocalTime nodeTime = LocalTime.parse(nodeTimeString, DateTimeFormatter.ofPattern("HH:mm:ss"));
+
+                            if (nodeTime.isBefore(minLastRunTime)) {
+                                minLastRunTime = nodeTime;
+                                toRemove = n;
+                            }
+                        }
+                        // remove node
+                        if (toRemove != null) {
+                            networkMap.get(current_dist).remove(toRemove);
+                            networkMap.get(current_dist).add(node);
+                        }
                     }
                 }
             } catch (Exception e) {
                 System.out.println("Error at update Network map: " + e);
             }
+
         //}
+    }
+
+    private void removeNode(int toRemove) {
+        // Iterate over the map entries
+        for (Map.Entry<Integer, ArrayList<NodeInfo>> entry : networkMap.entrySet()) {
+            Integer key = entry.getKey();
+            ArrayList<NodeInfo> nodeList = entry.getValue();
+
+            // Iterate over the list of NodeInfo objects
+            Iterator<NodeInfo> iterator = nodeList.iterator();
+            while (iterator.hasNext()) {
+                NodeInfo node = iterator.next();
+                // Check if the ID matches the ID to remove
+                if (node.getID() == toRemove) {
+                    // Remove the node from the list
+                    iterator.remove();
+                    // If the list becomes empty after removal, remove the key from the map
+                    if (nodeList.isEmpty()) {
+                        networkMap.remove(key);
+                    }
+                    // Exit the loop after removing the node
+                    break;
+                }
+            }
+        }
     }
     private void printNetworkMap(){
         for (Map.Entry<Integer, ArrayList<NodeInfo>> entry : networkMap.entrySet()) {
@@ -337,7 +415,7 @@ public class FullNode implements FullNodeInterface {
             System.out.print(key + ": [");
             for (int i = 0; i < nodeList.size(); i++) {
                 NodeInfo node = nodeList.get(i);
-                System.out.print("[" + node.getNodeName() + ", " + node.getPort() + ", " + node.getStartTime() + "]");
+                System.out.print("[" +node.getID() + ", " + node.getNodeName() + ", " + node.getPort() + ", " + node.getStartTime() + "]");
                 if (i < nodeList.size() - 1) {
                     System.out.print(", ");
                 }
