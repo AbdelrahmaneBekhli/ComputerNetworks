@@ -96,7 +96,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                         value.append(v).append("\n");
                     }
                     //remove extra \n at the end of the value
-                    if (!value.isEmpty() && value.charAt(value.length() - 1) == '\n') {
+                    if (value.charAt(value.length() - 1) == '\n') {
                         value.deleteCharAt(value.length() - 1);
                     }
                     return value.toString();
@@ -147,7 +147,6 @@ public class TemporaryNode implements TemporaryNodeInterface {
             String hashedKey = HashID.hexHash(key + "\n");
             writer.write("NEAREST? " + hashedKey + "\n");
             writer.flush();
-            
             String response = reader.readLine();
             if(response.startsWith("NODES")){
                 int nodesNum = Integer.parseInt(response.split(" ")[1]);
