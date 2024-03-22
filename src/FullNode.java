@@ -62,7 +62,7 @@ public class FullNode implements FullNodeInterface {
 
     private void activeMapping(String nodeAddress){
         networkMap = new HashMap<>();
-        NodeInfo thisNode = new NodeInfo(serverSocket.getLocalPort(), name, portNumber, getCurrentTime(), nodeAddress);
+        NodeInfo thisNode = new NodeInfo(serverSocket, name, portNumber, getCurrentTime(), nodeAddress);
         ArrayList<NodeInfo> list = new ArrayList<>();
         list.add(thisNode);
         networkMap.put(0, list);
@@ -197,7 +197,7 @@ public class FullNode implements FullNodeInterface {
                         store(parts, reader, writer);
                         break;
                     case "GET?":
-                        retrieve(parts, reader, writer);
+                        retrieve(parts, reader, writer, socket);
                         break;
                     case "ECHO?":
                         writer.write("OHCE\n");
@@ -279,7 +279,7 @@ public class FullNode implements FullNodeInterface {
             }
 
     }
-    private void retrieve(String[] parts, BufferedReader reader, BufferedWriter writer) {
+    private void retrieve(String[] parts, BufferedReader reader, BufferedWriter writer, Socket s) {
         try {
             // Initialization
             int keyLength = Integer.parseInt(parts[1]);
@@ -294,13 +294,67 @@ public class FullNode implements FullNodeInterface {
                     writer.write("VALUE " + numberOfLines + "\n" + value + "\n");
                     writer.flush();
                 } else{
-                    writer.write("NOPE" + "\n");
-                    writer.flush();
+                    // If the requester is full node
+                    if(isFullNode(s)){
+                        writer.write("NOPE" + "\n");
+                        writer.flush();
+                    // If the requester is temporary node
+                    } else {
+                        boolean found = false;
+                        // search the network map for the values
+                        for (Map.Entry<Integer, ArrayList<NodeInfo>> entry : networkMap.entrySet()) {
+                            ArrayList<NodeInfo> nodeList = entry.getValue();
+                            for (NodeInfo node : nodeList) {
+                                Socket tempSocket = node.getClientSocket();
+                                BufferedWriter tempWriter = new BufferedWriter(new OutputStreamWriter(tempSocket.getOutputStream()));
+                                BufferedReader tempReader = new BufferedReader(new InputStreamReader(tempSocket.getInputStream()));
+
+                                tempWriter.write("GET? " + key + "\n");
+                                tempWriter.flush();
+
+                                String response = tempReader.readLine();
+                                if(response.startsWith("VALUE")){
+                                    int numberOfLines = Integer.parseInt(response.split(" ")[1]);
+                                    for (int z = 0; z < numberOfLines; z++) {
+                                        String v = reader.readLine();
+                                        value.append(v).append("\n");
+                                    }
+                                    //remove extra \n at the end of the value
+                                    if (value.charAt(value.length() - 1) == '\n') {
+                                        value.deleteCharAt(value.length() - 1);
+                                    }
+                                    writer.write("VALUES " + numberOfLines + "\n" + value + "\n");
+                                    writer.flush();
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if(found){
+                                break;
+                            }
+                        }
+                        if(!found){
+                            writer.write("NOPE" + "\n");
+                            writer.flush();
+                        }
+                    }
                 }
             }
         } catch (Exception e) {
             System.out.println("Error at retrieve: " + e);
         }
+    }
+
+    private boolean isFullNode(Socket s){
+        for (Map.Entry<Integer, ArrayList<NodeInfo>> entry : networkMap.entrySet()) {
+            ArrayList<NodeInfo> nodeList = entry.getValue();
+            for (NodeInfo node : nodeList) {
+                if(s.getPort() == node.getID()){
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private ArrayList<NodeInfo> findNearest(String key) {
@@ -401,7 +455,7 @@ public class FullNode implements FullNodeInterface {
     private void updateNetworkMap(Socket socket, String nodeName, int port, String address) {
         String nodeType = nodeName.split(",")[1];
         if(nodeType.startsWith("fullNode")) {
-            NodeInfo node = new NodeInfo(socket.getPort(), nodeName, port, getCurrentTime(), address);
+            NodeInfo node = new NodeInfo(socket, nodeName, port, getCurrentTime(), address);
             ArrayList<NodeInfo> list = new ArrayList<>();
             list.add(node);
             if (!searchSocket(socket.getPort())){
