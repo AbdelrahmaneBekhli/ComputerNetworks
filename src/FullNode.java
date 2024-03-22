@@ -67,7 +67,7 @@ public class FullNode implements FullNodeInterface {
         list.add(thisNode);
         networkMap.put(0, list);
         System.out.println("Scanning for nodes on port 3000 - 5000");
-        for (int port = 3000; port <= 5000; port++) {
+        for (int port = 20000; port <= 20200; port++) {
             if (port != portNumber & !(checkUsedPort(port))) {
                 try {
                     // Create a socket and attempt to connect to the target host and port
@@ -316,19 +316,19 @@ public class FullNode implements FullNodeInterface {
             }
         }
         // Define a custom comparator to compare distances
-        /*
+
         Comparator<ArrayList<Object>> comparator = new Comparator<ArrayList<Object>>() {
             @Override
             public int compare(ArrayList<Object> pair1, ArrayList<Object> pair2) {
-                int distance1 = (int) pair1.getFirst();
-                int distance2 = (int) pair2.getFirst();
+                int distance1 = (int) pair1.get(0);
+                int distance2 = (int) pair2.get(0);
                 return Integer.compare(distance1, distance2);
             }
         };
 
         // Sort the distances ArrayList using the custom comparator
         distances.sort(comparator);
-        */
+
 
         // Create a new array containing the first 'nodeCount' nodes
         ArrayList<NodeInfo> nearestNodes = new ArrayList<>();
@@ -399,7 +399,8 @@ public class FullNode implements FullNodeInterface {
     }
 
     private void updateNetworkMap(Socket socket, String nodeName, int port, String address) {
-        if(Objects.equals(nodeName.split(":")[1], "FullNode")) {
+        String nodeType = nodeName.split(",")[1];
+        if(nodeType.startsWith("fullNode")) {
             NodeInfo node = new NodeInfo(socket.getPort(), nodeName, port, getCurrentTime(), address);
             ArrayList<NodeInfo> list = new ArrayList<>();
             list.add(node);
