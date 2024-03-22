@@ -316,6 +316,7 @@ public class FullNode implements FullNodeInterface {
             }
         }
         // Define a custom comparator to compare distances
+        /*
         Comparator<ArrayList<Object>> comparator = new Comparator<ArrayList<Object>>() {
             @Override
             public int compare(ArrayList<Object> pair1, ArrayList<Object> pair2) {
@@ -327,6 +328,7 @@ public class FullNode implements FullNodeInterface {
 
         // Sort the distances ArrayList using the custom comparator
         distances.sort(comparator);
+        */
 
         // Create a new array containing the first 'nodeCount' nodes
         ArrayList<NodeInfo> nearestNodes = new ArrayList<>();
@@ -338,6 +340,7 @@ public class FullNode implements FullNodeInterface {
                 break;
             }
         }
+
         return nearestNodes;
 
     }
