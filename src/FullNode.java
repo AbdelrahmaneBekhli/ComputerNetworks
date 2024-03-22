@@ -308,6 +308,7 @@ public class FullNode implements FullNodeInterface {
                                 Socket tempSocket = node.getClientSocket();
                                 BufferedWriter tempWriter = new BufferedWriter(new OutputStreamWriter(tempSocket.getOutputStream()));
                                 BufferedReader tempReader = new BufferedReader(new InputStreamReader(tempSocket.getInputStream()));
+                                System.out.println("checking port: " + node.getPort());
 
                                 tempWriter.write("GET? " + key + "\n");
                                 tempWriter.flush();
