@@ -68,7 +68,7 @@ public class FullNode implements FullNodeInterface {
         list.add(thisNode);
         networkMap.put(0, list);
         System.out.println("Scanning for nodes on port 3000 - 5000");
-        for (int port = 20000; port <= 20300; port++) {
+        for (int port = 22000; port <= 24000; port++) {
             if (port != portNumber & !(checkUsedPort(port))) {
                 try {
                     // Create a socket and attempt to connect to the target host and port
