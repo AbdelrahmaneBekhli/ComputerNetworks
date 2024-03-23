@@ -8,6 +8,7 @@
 
 import org.w3c.dom.Node;
 
+import javax.sound.midi.Soundbank;
 import java.io.*;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -67,7 +68,7 @@ public class FullNode implements FullNodeInterface {
         list.add(thisNode);
         networkMap.put(0, list);
         System.out.println("Scanning for nodes on port 3000 - 5000");
-        for (int port = 20000; port <= 20200; port++) {
+        for (int port = 20000; port <= 20300; port++) {
             if (port != portNumber & !(checkUsedPort(port))) {
                 try {
                     // Create a socket and attempt to connect to the target host and port
@@ -89,6 +90,7 @@ public class FullNode implements FullNodeInterface {
             }
         }
         System.out.println("Scan complete!");
+        printNetworkMap();
     }
 
     public void handleIncomingConnections(String startingNodeName, String startingNodeAddress) {
@@ -267,79 +269,88 @@ public class FullNode implements FullNodeInterface {
                 // Store the key-value pair
             }
         }
-            if (closet) {
-                dataStore.put(key.trim(), value);
-                // Respond with success
-                writer.write("SUCCESS\n");
-                writer.flush();
-            } else {
-                // Respond with FAILED
-                writer.write("FAILED\n");
-                writer.flush();
-            }
+        if (closet) {
+            dataStore.put(key.trim(), value);
+            // Respond with success
+            writer.write("SUCCESS\n");
+            writer.flush();
+        } else {
+            // Respond with FAILED
+            writer.write("FAILED\n");
+            writer.flush();
+        }
 
     }
     private void retrieve(String[] parts, BufferedReader reader, BufferedWriter writer, Socket s) {
         try {
             // Initialization
+            boolean found = false;
             int keyLength = Integer.parseInt(parts[1]);
             StringBuilder value = new StringBuilder();
+            StringBuilder keyBuilder = new StringBuilder();
             // Get value of each key
+            int keyBuilderLength = 0;
             for(int i = 0; i < keyLength; i++) {
-                String key = reader.readLine();
-                if (dataStore.containsKey(key)) {
-                    value.append(dataStore.get(key).trim());
-                    String[] lines = value.toString().split("\n");
-                    int numberOfLines = lines.length;
-                    writer.write("VALUE " + numberOfLines + "\n" + value + "\n");
-                    writer.flush();
-                } else{
-                    // If the requester is full node
-                    if(isFullNode(s)){
-                        writer.write("NOPE" + "\n");
-                        writer.flush();
-                    // If the requester is temporary node
-                    } else {
-                        boolean found = false;
-                        // search the network map for the values
-                        for (Map.Entry<Integer, ArrayList<NodeInfo>> entry : networkMap.entrySet()) {
-                            ArrayList<NodeInfo> nodeList = entry.getValue();
-                            for (NodeInfo node : nodeList) {
-                                Socket tempSocket = node.getClientSocket();
-                                BufferedWriter tempWriter = new BufferedWriter(new OutputStreamWriter(tempSocket.getOutputStream()));
-                                BufferedReader tempReader = new BufferedReader(new InputStreamReader(tempSocket.getInputStream()));
-                                System.out.println("checking port: " + node.getPort());
+                keyBuilder.append(reader.readLine()).append("\n");
+                keyBuilderLength++;
+            }
+            String key = keyBuilder.toString().trim();
 
-                                tempWriter.write("GET? " + key + "\n");
-                                tempWriter.flush();
+            if (dataStore.containsKey(key)) {
+                found = true;
+                value.append(dataStore.get(key).trim());
+                String[] lines = value.toString().split("\n");
+                int numberOfLines = lines.length;
+                //remove extra \n at the end of the value
+                if (value.charAt(value.length() - 1) == '\n') {
+                    value.deleteCharAt(value.length() - 1);
+                }
+                writer.write("VALUE " + numberOfLines + "\n" + value + "\n");
+                writer.flush();
+            } else if(!isFullNode(s)) {
+                // search the network map for the values
+                for (Map.Entry<Integer, ArrayList<NodeInfo>> entry : networkMap.entrySet()) {
+                    ArrayList<NodeInfo> nodeList = entry.getValue();
+                    for (NodeInfo node : nodeList) {
+                        // If it's not itself
+                        if (node.getClientSocket() != null) {
+                            Socket tempSocket = node.getClientSocket();
+                            BufferedWriter tempWriter = new BufferedWriter(new OutputStreamWriter(tempSocket.getOutputStream()));
+                            BufferedReader tempReader = new BufferedReader(new InputStreamReader(tempSocket.getInputStream()));
 
-                                String response = tempReader.readLine();
-                                if(response.startsWith("VALUE")){
-                                    int numberOfLines = Integer.parseInt(response.split(" ")[1]);
-                                    for (int z = 0; z < numberOfLines; z++) {
-                                        String v = reader.readLine();
-                                        value.append(v).append("\n");
-                                    }
-                                    //remove extra \n at the end of the value
-                                    if (value.charAt(value.length() - 1) == '\n') {
-                                        value.deleteCharAt(value.length() - 1);
-                                    }
-                                    writer.write("VALUES " + numberOfLines + "\n" + value + "\n");
-                                    writer.flush();
-                                    found = true;
-                                    break;
+                            // Send the node a GET? request
+                            tempWriter.write("GET? " + keyBuilderLength + "\n" + key + "\n");
+                            tempWriter.flush();
+
+                            String response = tempReader.readLine();
+                            // If found
+                            if (response.startsWith("VALUE")) {
+                                int numberOfLines = Integer.parseInt(response.split(" ")[1]);
+                                for (int z = 0; z < numberOfLines; z++) {
+                                    String v = tempReader.readLine();
+                                    value.append(v).append("\n");
                                 }
-                            }
-                            if(found){
+                                //remove extra \n at the end of the value
+                                if (value.charAt(value.length() - 1) == '\n') {
+                                    value.deleteCharAt(value.length() - 1);
+                                }
+
+                                // Send back the values
+                                writer.write(response + "\n" + value + "\n");
+                                writer.flush();
+                                found = true;
                                 break;
                             }
                         }
-                        if(!found){
-                            writer.write("NOPE" + "\n");
-                            writer.flush();
-                        }
+                    }
+                    if (found) {
+                        break;
                     }
                 }
+            }
+            if (!found) {
+                writer.write("NOPE\n");
+                writer.flush();
             }
         } catch (Exception e) {
             System.out.println("Error at retrieve: " + e);
@@ -543,6 +554,13 @@ public class FullNode implements FullNodeInterface {
                 }
             }
             System.out.println("]");
+        }
+    }
+    public static void main(String[] args) {
+        FullNode node = new FullNode();
+        if (node.listen("localhost", 20205)) {
+            System.out.println("Full Node listening on localhost:20205");
+            node.handleIncomingConnections("Merin.Muhamamd@city.ac.uk,fullNode", "127.0.0.1:20205");
         }
     }
 }
