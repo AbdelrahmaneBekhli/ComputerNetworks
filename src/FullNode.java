@@ -557,11 +557,4 @@ public class FullNode implements FullNodeInterface {
             System.out.println("]");
         }
     }
-    public static void main(String[] args) {
-        FullNode node = new FullNode();
-        if (node.listen("localhost", 20205)) {
-            System.out.println("Full Node listening on localhost:20205");
-            node.handleIncomingConnections("Merin.Muhamamd@city.ac.uk,fullNode", "127.0.0.1:20205");
-        }
-    }
 }
