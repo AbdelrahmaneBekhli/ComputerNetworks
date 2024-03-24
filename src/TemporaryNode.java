@@ -11,7 +11,6 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.util.Arrays;
 import java.util.HashMap;
 
 // DO NOT EDIT starts
@@ -215,6 +214,14 @@ public class TemporaryNode implements TemporaryNodeInterface {
             }
         } catch(Exception e){
             System.err.println(e);
+        }
+    }
+
+    public static void main(String[] args) {
+        TemporaryNode node = new TemporaryNode();
+        if(node.start("martin.brain@city.ac.uk:martins-implementations-1.0,fullNode-22000", "10.0.0.164:20001")){
+            String v = node.get("test/jabberwocky/1");
+            System.out.println("value got:" + v);
         }
     }
 }
