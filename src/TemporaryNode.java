@@ -11,6 +11,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.util.HashMap;
 
 // DO NOT EDIT starts
 interface TemporaryNodeInterface {
@@ -81,27 +82,45 @@ public class TemporaryNode implements TemporaryNodeInterface {
     }
 
     public String get(String key) {
+        String value;
         try {
             if(key.split("\n").length >= 1) {
                 // Send GET? request
-                writer.write("GET? " + key.split("\n").length + "\n" + key);
+                writer.write("GET? " + key.split("\n").length + "\n" + key + "\n");
                 writer.flush();
                 // Receive response
                 String response = reader.readLine();  // Read the response line
-                if (response != null && response.startsWith("VALUE")) {
-                    int numberOfLines = Integer.parseInt(response.split(" ")[1]);
-                    StringBuilder value = new StringBuilder();
-                    for (int i = 0; i < numberOfLines; i++) {
-                        String v = reader.readLine();
-                        value.append(v).append("\n");
+                if (response.startsWith("VALUE")) {
+                    return readValues(reader, Integer.parseInt(response.split(" ")[1]));
+                    // If first node doesn't have the values, ask the nearest nodes
+                } else if (response.startsWith("NOPE")) {
+                    HashMap<String, String> nearestNodes = nearest(key);
+                    for (HashMap.Entry<String, String> entry : nearestNodes.entrySet()) {
+                        String name = entry.getKey();
+                        String address = entry.getValue();
+                        // Attempt to connect to nodes
+                        Socket tempSocket = new Socket(address.split(":")[0], Integer.parseInt(address.split(":")[1]));
+                        BufferedReader tempReader = new BufferedReader(new InputStreamReader(tempSocket.getInputStream()));
+                        BufferedWriter tempWriter = new BufferedWriter(new OutputStreamWriter(tempSocket.getOutputStream()));
+
+                        tempWriter.write("START 1" + name + "\n");
+                        tempWriter.flush();
+
+
+                        // If connection was successful
+                        String startReply = tempReader.readLine();
+                        if (startReply.startsWith("START")) {
+
+                            tempWriter.write("GET? " + key.split("\n").length + "\n" + key + "\n");
+                            tempWriter.flush();
+
+                            String reply = tempReader.readLine();
+
+                            if (reply.startsWith("VALUE")) {
+                                return readValues(tempReader, Integer.parseInt(reply.split(" ")[1]));
+                            }
+                        }
                     }
-                    //remove extra \n at the end of the value
-                    if (value.charAt(value.length() - 1) == '\n') {
-                        value.deleteCharAt(value.length() - 1);
-                    }
-                    return value.toString();
-                } else if (response != null && response.equals("NOPE")) {
-                    return null;
                 }
             } else {
                 System.err.println("Error at Get: Invalid number of lines of key");
@@ -112,6 +131,25 @@ public class TemporaryNode implements TemporaryNodeInterface {
         }
         return null;
     }
+
+    private String readValues(BufferedReader reader, int numberOfLines) {
+        try {
+            StringBuilder value = new StringBuilder();
+            for (int i = 0; i < numberOfLines; i++) {
+                String v = reader.readLine();
+                value.append(v).append("\n");
+            }
+            // Remove extra \n at the end of the value
+            if (value.charAt(value.length() - 1) == '\n') {
+                value.deleteCharAt(value.length() - 1);
+            }
+            return value.toString();
+        } catch (Exception e){
+            System.out.println("Exception during get reading values: " + e);
+        }
+        return null;
+    }
+
     public boolean echo(){
         try {
             writer.write("ECHO?\n");
@@ -142,7 +180,8 @@ public class TemporaryNode implements TemporaryNodeInterface {
         return false;
     }
 
-    public void nearest(String key){
+    public HashMap<String, String> nearest(String key){
+        HashMap<String,String> nodes = new HashMap<>();
         try{
             String hashedKey = HashID.hexHash(key + "\n");
             writer.write("NEAREST? " + hashedKey + "\n");
@@ -150,14 +189,16 @@ public class TemporaryNode implements TemporaryNodeInterface {
             String response = reader.readLine();
             if(response.startsWith("NODES")){
                 int nodesNum = Integer.parseInt(response.split(" ")[1]);
-                System.out.println("NODES " + nodesNum);
-                for(int i = 0; i < nodesNum * 2; i++){
-                    System.out.println(reader.readLine());
+                for(int i = 0; i < nodesNum; i++){
+                    String name = reader.readLine();
+                    String address = reader.readLine();
+                    nodes.put(name, address);
                 }
             }
         } catch (Exception e){
             System.err.println("Exception during nearest operation: " + e);
         }
+        return nodes;
     }
 
     public void end(String reason){
