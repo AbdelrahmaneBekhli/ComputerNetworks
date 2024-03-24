@@ -111,13 +111,15 @@ public class TemporaryNode implements TemporaryNodeInterface {
                         // If connection was successful
                         String startReply = tempReader.readLine();
                         if (startReply.startsWith("START")) {
+                            System.out.println("connected");
 
                             tempWriter.write("GET? " + key.split("\n").length + "\n" + key + "\n");
                             tempWriter.flush();
 
                             String reply = tempReader.readLine();
-
+                            System.out.println("reply: " + reply);
                             if (reply.startsWith("VALUE")) {
+                                System.out.println("has value");
                                 return readValues(tempReader, Integer.parseInt(reply.split(" ")[1]));
                             }
                         }
