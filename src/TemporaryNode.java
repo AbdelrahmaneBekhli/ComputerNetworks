@@ -11,6 +11,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.util.Arrays;
 import java.util.HashMap;
 
 // DO NOT EDIT starts
@@ -98,6 +99,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                     for (HashMap.Entry<String, String> entry : nearestNodes.entrySet()) {
                         String name = entry.getKey();
                         String address = entry.getValue();
+                        System.out.println(name + " " + address);
                         // Attempt to connect to nodes
                         Socket tempSocket = new Socket(address.split(":")[0], Integer.parseInt(address.split(":")[1]));
                         BufferedReader tempReader = new BufferedReader(new InputStreamReader(tempSocket.getInputStream()));
