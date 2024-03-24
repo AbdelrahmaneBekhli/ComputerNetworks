@@ -104,7 +104,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                         BufferedReader tempReader = new BufferedReader(new InputStreamReader(tempSocket.getInputStream()));
                         BufferedWriter tempWriter = new BufferedWriter(new OutputStreamWriter(tempSocket.getOutputStream()));
 
-                        tempWriter.write("START 1" + name + "\n");
+                        tempWriter.write("START 1 " + name + "\n");
                         tempWriter.flush();
 
 
