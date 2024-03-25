@@ -86,14 +86,16 @@ public class TemporaryNode implements TemporaryNodeInterface {
         try {
             if(key.split("\n").length >= 1) {
                 // Send GET? request
-                writer.write("GET? " + key.split("\n").length + "\n" + key + "\n");
+                writer.write("GET? " + key.split("\n").length + "\n" + key);
                 writer.flush();
                 // Receive response
                 String response = reader.readLine();  // Read the response line
                 if (response.startsWith("VALUE")) {
+                    System.out.println("FOUND in requesting node");
                     return readValues(reader, Integer.parseInt(response.split(" ")[1]));
                     // If first node doesn't have the values, ask the nearest nodes
                 } else if (response.startsWith("NOPE")) {
+                    System.out.println("not found, getting nearest");
                     HashMap<String, String> nearestNodes = nearest(key);
                     for (HashMap.Entry<String, String> entry : nearestNodes.entrySet()) {
                         String name = entry.getKey();
@@ -113,13 +115,12 @@ public class TemporaryNode implements TemporaryNodeInterface {
                         if (startReply.startsWith("START")) {
                             System.out.println("connected");
 
-                            tempWriter.write("GET? " + key.split("\n").length + "\n" + key + "\n");
+                            tempWriter.write("GET? " + key.split("\n").length + "\n" + key);
                             tempWriter.flush();
 
                             String reply = tempReader.readLine();
-                            System.out.println("reply: " + reply);
                             if (reply.startsWith("VALUE")) {
-                                System.out.println("has value");
+                                System.out.println("FOUND!");
                                 return readValues(tempReader, Integer.parseInt(reply.split(" ")[1]));
                             }
                         }
@@ -186,7 +187,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
     public HashMap<String, String> nearest(String key){
         HashMap<String,String> nodes = new HashMap<>();
         try{
-            String hashedKey = HashID.hexHash(key + "\n");
+            String hashedKey = HashID.hexHash(key);
             writer.write("NEAREST? " + hashedKey + "\n");
             writer.flush();
             String response = reader.readLine();
@@ -222,7 +223,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
     public static void main(String[] args) {
         TemporaryNode node = new TemporaryNode();
         if(node.start("martin.brain@city.ac.uk:martins-implementations-1.0,fullNode-22000", "10.0.0.164:20001")){
-            String v = node.get("test/jabberwocky/1");
+            String v = node.get("test/jabberwocky/1\n");
             System.out.println("value got:" + v);
         }
     }
