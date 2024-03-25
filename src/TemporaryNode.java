@@ -91,16 +91,13 @@ public class TemporaryNode implements TemporaryNodeInterface {
                 // Receive response
                 String response = reader.readLine();  // Read the response line
                 if (response.startsWith("VALUE")) {
-                    System.out.println("FOUND in requesting node");
                     return readValues(reader, Integer.parseInt(response.split(" ")[1]));
                     // If first node doesn't have the values, ask the nearest nodes
                 } else if (response.startsWith("NOPE")) {
-                    System.out.println("not found, getting nearest");
                     HashMap<String, String> nearestNodes = nearest(key);
                     for (HashMap.Entry<String, String> entry : nearestNodes.entrySet()) {
                         String name = entry.getKey();
                         String address = entry.getValue();
-                        System.out.println(name + " " + address);
                         // Attempt to connect to nodes
                         Socket tempSocket = new Socket(address.split(":")[0], Integer.parseInt(address.split(":")[1]));
                         BufferedReader tempReader = new BufferedReader(new InputStreamReader(tempSocket.getInputStream()));
@@ -113,14 +110,12 @@ public class TemporaryNode implements TemporaryNodeInterface {
                         // If connection was successful
                         String startReply = tempReader.readLine();
                         if (startReply.startsWith("START")) {
-                            System.out.println("connected");
 
                             tempWriter.write("GET? " + key.split("\n").length + "\n" + key);
                             tempWriter.flush();
 
                             String reply = tempReader.readLine();
                             if (reply.startsWith("VALUE")) {
-                                System.out.println("FOUND!");
                                 return readValues(tempReader, Integer.parseInt(reply.split(" ")[1]));
                             }
                         }
@@ -217,14 +212,6 @@ public class TemporaryNode implements TemporaryNodeInterface {
             }
         } catch(Exception e){
             System.err.println(e);
-        }
-    }
-
-    public static void main(String[] args) {
-        TemporaryNode node = new TemporaryNode();
-        if(node.start("martin.brain@city.ac.uk:martins-implementations-1.0,fullNode-22000", "10.0.0.164:20001")){
-            String v = node.get("test/jabberwocky/1\n");
-            System.out.println("value got:" + v);
         }
     }
 }
