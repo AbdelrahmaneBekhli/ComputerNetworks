@@ -84,7 +84,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                     // If first node doesn't have the values, ask the nearest nodes
                 } else if (response.startsWith("NOPE")) {
                     System.out.println("not found");
-                    HashMap<String, String> nearestNodes = nearest(key);
+                    HashMap<String, String> nearestNodes = nearest(key, writer, reader);
                     return askNearest(key, nearestNodes);
                 }
             } else {
@@ -101,6 +101,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
             for (HashMap.Entry<String, String> entry : nearestNodes.entrySet()) {
                 String name = entry.getKey();
                 String address = entry.getValue();
+                System.out.println(name);
                 // Attempt to connect to nodes
                 Socket tempSocket = new Socket(address.split(":")[0], Integer.parseInt(address.split(":")[1]));
                 BufferedReader tempReader = new BufferedReader(new InputStreamReader(tempSocket.getInputStream()));
@@ -170,18 +171,18 @@ public class TemporaryNode implements TemporaryNodeInterface {
         }
         return false;
     }
-    public HashMap<String, String> nearest(String key){
+    public HashMap<String, String> nearest(String key, BufferedWriter w, BufferedReader r){
         HashMap<String,String> nodes = new HashMap<>();
         try{
             String hashedKey = HashID.hexHash(key);
-            writer.write("NEAREST? " + hashedKey + "\n");
-            writer.flush();
-            String response = reader.readLine();
+            w.write("NEAREST? " + hashedKey + "\n");
+            w.flush();
+            String response = r.readLine();
             if(response.startsWith("NODES")){
                 int nodesNum = Integer.parseInt(response.split(" ")[1]);
                 for(int i = 0; i < nodesNum; i++){
-                    String name = reader.readLine();
-                    String address = reader.readLine();
+                    String name = r.readLine();
+                    String address = r.readLine();
                     nodes.put(name, address);
                 }
             }
