@@ -1,7 +1,7 @@
 import java.net.ServerSocket;
 import java.net.Socket;
 
-class NodeInfo {
+public class NodeInfo {
     private final int ID;
     private final String nodeName;
     private final int port;
