@@ -38,8 +38,11 @@ public class TemporaryNode implements TemporaryNodeInterface {
             writer.flush();
             // Receive START message from the starting node
             String startResponse = reader.readLine();
-            if (startResponse != null && startResponse.startsWith("START")) {
+            if (startResponse.startsWith("START")) {
                 return true;
+            } else if (startResponse.startsWith("END")){
+                socket.close();
+                open = false;
             }
         } catch (Exception e) {
             System.err.println("Exception during node start: " + e);
@@ -55,11 +58,12 @@ public class TemporaryNode implements TemporaryNodeInterface {
                     writer.flush();
                     // Receive response
                     String response = reader.readLine();
-                    if (response != null && response.equals("SUCCESS")) {
+                    if (response.equals("SUCCESS")) {
                         return true;
-                    } else {
-                        System.err.println("Store operation failed. Server response: " + response);
-                    }
+                    } else if (response.startsWith("END")){
+                            socket.close();
+                            open = false;
+                        }
                 } else{
                     System.err.println("Error at Store: Invalid number of lines of value");
                 }
@@ -89,6 +93,9 @@ public class TemporaryNode implements TemporaryNodeInterface {
                     System.out.println("not found");
                     HashMap<String, String> nearestNodes = nearest(key, writer, reader);
                     return askNearest(key, nearestNodes, new HashSet<>());
+                } else if (response.startsWith("END")){
+                    socket.close();
+                    open = false;
                 }
             } else {
                 System.err.println("Error at Get: Invalid number of lines of key");
@@ -179,7 +186,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
         }
         return false;
     }
-    public HashMap<String, String> nearest(String key, BufferedWriter w, BufferedReader r){
+    private HashMap<String, String> nearest(String key, BufferedWriter w, BufferedReader r){
         HashMap<String,String> nodes = new HashMap<>();
         try{
             String hashedKey = HashID.hexHash(key);
