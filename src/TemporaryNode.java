@@ -154,6 +154,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                         if (reply.startsWith("VALUE")) {
                             return readValues(tempReader, Integer.parseInt(reply.split(" ")[1]));
                         } else if(reply.startsWith("NOPE")){
+                            System.out.println("NEAREST FOR: " + name);
                             askNearest(key, nearest(key, tempReader, tempWriter), visitedNodes);
                         }
                     }
@@ -210,6 +211,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                     String name = reader.readLine();
                     String address = reader.readLine();
                     nodes.put(name, address);
+                    System.out.println(name + " " + address);
                 }
             }
         } catch (Exception e){
