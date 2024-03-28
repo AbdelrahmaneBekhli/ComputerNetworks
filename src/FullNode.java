@@ -6,9 +6,7 @@
 // 220011666
 // abdelrahmane.bekhli@city.ac.uk
 
-import org.w3c.dom.Node;
 
-import javax.sound.midi.Soundbank;
 import java.io.*;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -67,7 +65,7 @@ public class FullNode implements FullNodeInterface {
         ArrayList<NodeInfo> list = new ArrayList<>();
         list.add(thisNode);
         networkMap.put(0, list);
-        System.out.println("Scanning for nodes on port 3000 - 5000");
+        System.out.println("Scanning for nodes on port 20000 - 20300");
         for (int port = 20000; port <= 20300; port++) {
             if (port != portNumber & !(checkUsedPort(port))) {
                 try {
@@ -232,9 +230,8 @@ public class FullNode implements FullNodeInterface {
                         removeNode(socket.getPort());
                         break;
                     default:
-                        System.err.println("Invalid request received: " + command);
                         // Respond with an error
-                        writer.write("ERROR\n");
+                        writer.write("END Invalid request received\n");
                         writer.flush();
                         break;
                 }
@@ -260,7 +257,8 @@ public class FullNode implements FullNodeInterface {
         }
         String key = keyBuilder.toString();
         String value = valueBuilder.toString();
-        ArrayList<NodeInfo> nearestNodes = findNearest(key);
+        System.out.println("HASH KEY AT STORE: " + HashID.hexHash(key));
+        ArrayList<NodeInfo> nearestNodes = findNearest(HashID.hexHash(key));
         boolean closet = false;
         for(NodeInfo n: nearestNodes) {
             if (Objects.equals(n.getNodeName(), name) && n.getPort() == portNumber) {
@@ -284,90 +282,28 @@ public class FullNode implements FullNodeInterface {
     private void retrieve(String[] parts, BufferedReader reader, BufferedWriter writer, Socket s) {
         try {
             // Initialization
-            boolean found = false;
             int keyLength = Integer.parseInt(parts[1]);
             StringBuilder value = new StringBuilder();
             StringBuilder keyBuilder = new StringBuilder();
             // Get value of each key
-            int keyBuilderLength = 0;
             for(int i = 0; i < keyLength; i++) {
                 keyBuilder.append(reader.readLine()).append("\n");
-                keyBuilderLength++;
             }
             String key = keyBuilder.toString().trim();
 
             if (dataStore.containsKey(key)) {
-                found = true;
                 value.append(dataStore.get(key).trim());
                 String[] lines = value.toString().split("\n");
                 int numberOfLines = lines.length;
-                //remove extra \n at the end of the value
-                if (value.charAt(value.length() - 1) == '\n') {
-                    value.deleteCharAt(value.length() - 1);
-                }
                 writer.write("VALUE " + numberOfLines + "\n" + value + "\n");
                 writer.flush();
-            } else if(!isFullNode(s)) {
-                // search the network map for the values
-                for (Map.Entry<Integer, ArrayList<NodeInfo>> entry : networkMap.entrySet()) {
-                    ArrayList<NodeInfo> nodeList = entry.getValue();
-                    for (NodeInfo node : nodeList) {
-                        // If it's not itself
-                        if (node.getClientSocket() != null) {
-                            Socket tempSocket = node.getClientSocket();
-                            BufferedWriter tempWriter = new BufferedWriter(new OutputStreamWriter(tempSocket.getOutputStream()));
-                            BufferedReader tempReader = new BufferedReader(new InputStreamReader(tempSocket.getInputStream()));
-
-                            // Send the node a GET? request
-                            tempWriter.write("GET? " + keyBuilderLength + "\n" + key + "\n");
-                            tempWriter.flush();
-
-                            String response = tempReader.readLine();
-                            // If found
-                            if (response.startsWith("VALUE")) {
-                                int numberOfLines = Integer.parseInt(response.split(" ")[1]);
-                                for (int z = 0; z < numberOfLines; z++) {
-                                    String v = tempReader.readLine();
-                                    value.append(v).append("\n");
-                                }
-                                //remove extra \n at the end of the value
-                                if (value.charAt(value.length() - 1) == '\n') {
-                                    value.deleteCharAt(value.length() - 1);
-                                }
-
-                                // Send back the values
-                                writer.write(response + "\n" + value + "\n");
-                                writer.flush();
-                                found = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (found) {
-                        break;
-                    }
-                }
-            }
-            if (!found) {
+            } else {
                 writer.write("NOPE\n");
                 writer.flush();
             }
-            printNetworkMap();
         } catch (Exception e) {
             System.out.println("Error at retrieve: " + e);
         }
-    }
-
-    private boolean isFullNode(Socket s){
-        for (Map.Entry<Integer, ArrayList<NodeInfo>> entry : networkMap.entrySet()) {
-            ArrayList<NodeInfo> nodeList = entry.getValue();
-            for (NodeInfo node : nodeList) {
-                if(s.getPort() == node.getID()){
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     private ArrayList<NodeInfo> findNearest(String key) {
@@ -407,7 +343,6 @@ public class FullNode implements FullNodeInterface {
                 break;
             }
         }
-
         return nearestNodes;
 
     }
