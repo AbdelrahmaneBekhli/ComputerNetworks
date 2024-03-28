@@ -124,7 +124,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                         if (reply.startsWith("VALUE")) {
                             return readValues(tempReader, Integer.parseInt(reply.split(" ")[1]));
                         } else {
-                            askNearest(key, nearest(key, tempWriter, tempReader), visited);
+                            return askNearest(key, nearest(key, tempWriter, tempReader), visited);
                         }
                     }
                 }
