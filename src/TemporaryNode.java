@@ -126,6 +126,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
     }
     private String readValues(BufferedReader reader, int numberOfLines) {
         try {
+            System.out.println("number of lines: " + numberOfLines);
             StringBuilder value = new StringBuilder();
             for (int i = 0; i < numberOfLines; i++) {
                 String v = reader.readLine();
@@ -135,6 +136,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
             if (value.charAt(value.length() - 1) == '\n') {
                 value.deleteCharAt(value.length() - 1);
             }
+            System.out.println("Value: " + value);
             return value.toString();
         } catch (Exception e){
             System.out.println("Exception during get reading values: " + e);
