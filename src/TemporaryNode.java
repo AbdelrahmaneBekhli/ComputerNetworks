@@ -133,7 +133,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
 
             if(!visitedNodes.contains(name)){
                 visitedNodes.add(name);
-                System.out.println(name);
+                System.out.println("checking: " + name);
                 try{
                     // Attempt to connect to nodes
                     Socket tempSocket = new Socket(address.split(":")[0], Integer.parseInt(address.split(":")[1]));
@@ -162,6 +162,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                     System.out.println(e);
                 }
             }
+            System.out.println("already: " + name);
         }
         return null;
     }
@@ -209,7 +210,6 @@ public class TemporaryNode implements TemporaryNodeInterface {
                     String name = reader.readLine();
                     String address = reader.readLine();
                     nodes.put(name, address);
-                    System.out.println(name + " " + address);
                 }
             }
         } catch (Exception e){
