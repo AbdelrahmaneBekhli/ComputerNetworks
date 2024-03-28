@@ -11,6 +11,9 @@ import java.io.BufferedWriter;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+
 // DO NOT EDIT starts
 interface TemporaryNodeInterface {
     public boolean start(String startingNodeName, String startingNodeAddress);
@@ -85,7 +88,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                 } else if (response.startsWith("NOPE")) {
                     System.out.println("not found");
                     HashMap<String, String> nearestNodes = nearest(key, writer, reader);
-                    return askNearest(key, nearestNodes);
+                    return askNearest(key, nearestNodes, new HashSet<>());
                 }
             } else {
                 System.err.println("Error at Get: Invalid number of lines of key");
@@ -96,28 +99,33 @@ public class TemporaryNode implements TemporaryNodeInterface {
         return null;
     }
 
-    private String askNearest(String key, HashMap<String, String> nearestNodes ){
+    private String askNearest(String key, HashMap<String, String> nearestNodes, Set<String> visited){
         try {
             for (HashMap.Entry<String, String> entry : nearestNodes.entrySet()) {
                 String name = entry.getKey();
                 String address = entry.getValue();
                 System.out.println(name);
-                // Attempt to connect to nodes
-                Socket tempSocket = new Socket(address.split(":")[0], Integer.parseInt(address.split(":")[1]));
-                BufferedReader tempReader = new BufferedReader(new InputStreamReader(tempSocket.getInputStream()));
-                BufferedWriter tempWriter = new BufferedWriter(new OutputStreamWriter(tempSocket.getOutputStream()));
-                tempWriter.write("START 1 " + name + "\n");
-                tempWriter.flush();
-                // If connection was successful
-                String startReply = tempReader.readLine();
-                if (startReply.startsWith("START")) {
-
-                    tempWriter.write("GET? " + key.split("\n").length + "\n" + key);
+                if (!visited.contains(name)) {
+                    visited.add(name);
+                    // Attempt to connect to nodes
+                    Socket tempSocket = new Socket(address.split(":")[0], Integer.parseInt(address.split(":")[1]));
+                    BufferedReader tempReader = new BufferedReader(new InputStreamReader(tempSocket.getInputStream()));
+                    BufferedWriter tempWriter = new BufferedWriter(new OutputStreamWriter(tempSocket.getOutputStream()));
+                    tempWriter.write("START 1 " + name + "\n");
                     tempWriter.flush();
+                    // If connection was successful
+                    String startReply = tempReader.readLine();
+                    if (startReply.startsWith("START")) {
 
-                    String reply = tempReader.readLine();
-                    if (reply.startsWith("VALUE")) {
-                        return readValues(tempReader, Integer.parseInt(reply.split(" ")[1]));
+                        tempWriter.write("GET? " + key.split("\n").length + "\n" + key);
+                        tempWriter.flush();
+
+                        String reply = tempReader.readLine();
+                        if (reply.startsWith("VALUE")) {
+                            return readValues(tempReader, Integer.parseInt(reply.split(" ")[1]));
+                        } else {
+                            askNearest(key, nearest(key, tempWriter, tempReader), visited);
+                        }
                     }
                 }
             }
