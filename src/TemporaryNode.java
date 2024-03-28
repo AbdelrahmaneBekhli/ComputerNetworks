@@ -82,34 +82,43 @@ public class TemporaryNode implements TemporaryNodeInterface {
                     // If first node doesn't have the values, ask the nearest nodes
                 } else if (response.startsWith("NOPE")) {
                     HashMap<String, String> nearestNodes = nearest(key);
-                    for (HashMap.Entry<String, String> entry : nearestNodes.entrySet()) {
-                        String name = entry.getKey();
-                        String address = entry.getValue();
-                        // Attempt to connect to nodes
-                        Socket tempSocket = new Socket(address.split(":")[0], Integer.parseInt(address.split(":")[1]));
-                        BufferedReader tempReader = new BufferedReader(new InputStreamReader(tempSocket.getInputStream()));
-                        BufferedWriter tempWriter = new BufferedWriter(new OutputStreamWriter(tempSocket.getOutputStream()));
-                        tempWriter.write("START 1 " + name + "\n");
-                        tempWriter.flush();
-                        // If connection was successful
-                        String startReply = tempReader.readLine();
-                        if (startReply.startsWith("START")) {
-
-                            tempWriter.write("GET? " + key.split("\n").length + "\n" + key);
-                            tempWriter.flush();
-
-                            String reply = tempReader.readLine();
-                            if (reply.startsWith("VALUE")) {
-                                return readValues(tempReader, Integer.parseInt(reply.split(" ")[1]));
-                            }
-                        }
-                    }
+                    return askNearest(key, nearestNodes);
                 }
             } else {
                 System.err.println("Error at Get: Invalid number of lines of key");
             }
         } catch (Exception e) {
             System.err.println("Exception during get operation: " + e);
+        }
+        return null;
+    }
+
+    private String askNearest(String key, HashMap<String, String> nearestNodes ){
+        try {
+            for (HashMap.Entry<String, String> entry : nearestNodes.entrySet()) {
+                String name = entry.getKey();
+                String address = entry.getValue();
+                // Attempt to connect to nodes
+                Socket tempSocket = new Socket(address.split(":")[0], Integer.parseInt(address.split(":")[1]));
+                BufferedReader tempReader = new BufferedReader(new InputStreamReader(tempSocket.getInputStream()));
+                BufferedWriter tempWriter = new BufferedWriter(new OutputStreamWriter(tempSocket.getOutputStream()));
+                tempWriter.write("START 1 " + name + "\n");
+                tempWriter.flush();
+                // If connection was successful
+                String startReply = tempReader.readLine();
+                if (startReply.startsWith("START")) {
+
+                    tempWriter.write("GET? " + key.split("\n").length + "\n" + key);
+                    tempWriter.flush();
+
+                    String reply = tempReader.readLine();
+                    if (reply.startsWith("VALUE")) {
+                        return readValues(tempReader, Integer.parseInt(reply.split(" ")[1]));
+                    }
+                }
+            }
+        } catch (Exception e){
+            System.err.println(e);
         }
         return null;
     }
