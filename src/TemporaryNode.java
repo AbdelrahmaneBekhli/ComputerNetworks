@@ -78,9 +78,11 @@ public class TemporaryNode implements TemporaryNodeInterface {
                 // Receive response
                 String response = reader.readLine();  // Read the response line
                 if (response.startsWith("VALUE")) {
+                    System.out.println("found");
                     return readValues(reader, Integer.parseInt(response.split(" ")[1]));
                     // If first node doesn't have the values, ask the nearest nodes
                 } else if (response.startsWith("NOPE")) {
+                    System.out.println("not found");
                     HashMap<String, String> nearestNodes = nearest(key);
                     return askNearest(key, nearestNodes);
                 }
