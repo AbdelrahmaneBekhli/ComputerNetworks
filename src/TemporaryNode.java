@@ -79,6 +79,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                 String response = reader.readLine();  // Read the response line
                 if (response.startsWith("VALUE")) {
                     System.out.println("found");
+                    System.out.println("reply: " + response);
                     return readValues(reader, Integer.parseInt(response.split(" ")[1]));
                     // If first node doesn't have the values, ask the nearest nodes
                 } else if (response.startsWith("NOPE")) {
