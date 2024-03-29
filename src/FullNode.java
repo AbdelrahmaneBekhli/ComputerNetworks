@@ -207,6 +207,7 @@ public class FullNode implements FullNodeInterface {
                         String nodeName = reader.readLine();
                         String nodeAddress = reader.readLine();
                         notified(nodeName, nodeAddress, socket);
+                        updateNetworkMap(socket,nodeName, Integer.parseInt(nodeAddress.split(":")[1]), nodeAddress);
                         writer.write("NOTIFIED\n");
                         writer.flush();
                         break;
@@ -406,49 +407,48 @@ public class FullNode implements FullNodeInterface {
             NodeInfo node = new NodeInfo(socket, nodeName, port, getCurrentTime(), address);
             ArrayList<NodeInfo> list = new ArrayList<>();
             list.add(node);
-            if (!searchSocket(socket.getPort())){
+            if (!searchSocket(socket.getPort())) {
                 connectedSockets.add(socket);
-            }
 
-            //find distance
-            try {
-                int current_dist = HashID.getDistance(HashID.hexHash(name + "\n"), HashID.hexHash(nodeName + "\n"));
-                if(current_dist != 0) {
-                    // if node is not in network map
-                    if (networkMap.get(current_dist) == null) {
-                        networkMap.put(current_dist, list);
-                    }
-                    // If direction (distance) has less than 3 nodes in it
-                    else if (networkMap.get(current_dist).size() < 3) {
-                        networkMap.get(current_dist).add(node);
-                    }
-                    // remove the shortest running node
-                    else {
-                        // Initialization
-                        NodeInfo toRemove = null;
-                        LocalTime minLastRunTime = LocalTime.MAX;
-
-                        // find node with the shortest time
-                        for (NodeInfo n : networkMap.get(current_dist)) {
-                            String nodeTimeString = n.getStartTime();
-                            LocalTime nodeTime = LocalTime.parse(nodeTimeString, DateTimeFormatter.ofPattern("HH:mm:ss"));
-
-                            if (nodeTime.isBefore(minLastRunTime)) {
-                                minLastRunTime = nodeTime;
-                                toRemove = n;
-                            }
+                //find distance
+                try {
+                    int current_dist = HashID.getDistance(HashID.hexHash(name + "\n"), HashID.hexHash(nodeName + "\n"));
+                    if (current_dist != 0) {
+                        // if node is not in network map
+                        if (networkMap.get(current_dist) == null) {
+                            networkMap.put(current_dist, list);
                         }
-                        // remove node
-                        if (toRemove != null) {
-                            networkMap.get(current_dist).remove(toRemove);
+                        // If direction (distance) has less than 3 nodes in it
+                        else if (networkMap.get(current_dist).size() < 3) {
                             networkMap.get(current_dist).add(node);
                         }
-                    }
-                }
-            } catch (Exception e) {
-                System.out.println("Error at update Network map: " + e);
-            }
+                        // remove the shortest running node
+                        else {
+                            // Initialization
+                            NodeInfo toRemove = null;
+                            LocalTime minLastRunTime = LocalTime.MAX;
 
+                            // find node with the shortest time
+                            for (NodeInfo n : networkMap.get(current_dist)) {
+                                String nodeTimeString = n.getStartTime();
+                                LocalTime nodeTime = LocalTime.parse(nodeTimeString, DateTimeFormatter.ofPattern("HH:mm:ss"));
+
+                                if (nodeTime.isBefore(minLastRunTime)) {
+                                    minLastRunTime = nodeTime;
+                                    toRemove = n;
+                                }
+                            }
+                            // remove node
+                            if (toRemove != null) {
+                                networkMap.get(current_dist).remove(toRemove);
+                                networkMap.get(current_dist).add(node);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    System.out.println("Error at update Network map: " + e);
+                }
+            }
         }
     }
 
