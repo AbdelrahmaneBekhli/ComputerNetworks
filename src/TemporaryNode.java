@@ -85,12 +85,9 @@ public class TemporaryNode implements TemporaryNodeInterface {
                 // Receive response
                 String response = reader.readLine();  // Read the response line
                 if (response.startsWith("VALUE")) {
-                    System.out.println("found");
-                    System.out.println("reply: " + response);
                     return readValues(reader, Integer.parseInt(response.split(" ")[1]));
                     // If first node doesn't have the values, ask the nearest nodes
                 } else if (response.startsWith("NOPE")) {
-                    System.out.println("not found");
                     HashMap<String, String> nearestNodes = nearest(key, writer, reader);
                     return askNearest(key, nearestNodes, new HashSet<>());
                 } else if (response.startsWith("END")){
@@ -111,7 +108,6 @@ public class TemporaryNode implements TemporaryNodeInterface {
             for (HashMap.Entry<String, String> entry : nearestNodes.entrySet()) {
                 String name = entry.getKey();
                 String address = entry.getValue();
-                System.out.println(name);
                 if (!visited.contains(name)) {
                     visited.add(name);
                     // Attempt to connect to nodes
@@ -143,7 +139,6 @@ public class TemporaryNode implements TemporaryNodeInterface {
     }
     private String readValues(BufferedReader reader, int numberOfLines) {
         try {
-            System.out.println("number of lines: " + numberOfLines);
             StringBuilder value = new StringBuilder();
             for (int i = 0; i < numberOfLines; i++) {
                 String v = reader.readLine();
@@ -153,7 +148,6 @@ public class TemporaryNode implements TemporaryNodeInterface {
             if (value.charAt(value.length() - 1) == '\n') {
                 value.deleteCharAt(value.length() - 1);
             }
-            System.out.println("Value: " + value);
             return value.toString();
         } catch (Exception e){
             System.out.println("Exception during get reading values: " + e);
