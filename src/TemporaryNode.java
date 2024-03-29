@@ -60,6 +60,8 @@ public class TemporaryNode implements TemporaryNodeInterface {
                     String response = reader.readLine();
                     if (response.equals("SUCCESS")) {
                         return true;
+                    } else if (response.equals("FAILED")) {
+                        return storeInNearest(key, value, nearest(key, writer, reader), new HashSet<>());
                     } else if (response.startsWith("END")){
                             socket.close();
                             open = false;
@@ -76,7 +78,6 @@ public class TemporaryNode implements TemporaryNodeInterface {
         return false;
     }
     public String get(String key) {
-        String value;
         try {
             if(key.split("\n").length >= 1) {
                 // Send GET? request
@@ -89,7 +90,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                     // If first node doesn't have the values, ask the nearest nodes
                 } else if (response.startsWith("NOPE")) {
                     HashMap<String, String> nearestNodes = nearest(key, writer, reader);
-                    return askNearest(key, nearestNodes, new HashSet<>());
+                    return getFromNearest(key, nearestNodes, new HashSet<>());
                 } else if (response.startsWith("END")){
                     socket.close();
                     open = false;
@@ -103,7 +104,42 @@ public class TemporaryNode implements TemporaryNodeInterface {
         return null;
     }
 
-    private String askNearest(String key, HashMap<String, String> nearestNodes, Set<String> visited){
+    private boolean storeInNearest(String key, String value, HashMap<String, String> nearestNodes, Set<String> visited){
+        try {
+            for (HashMap.Entry<String, String> entry : nearestNodes.entrySet()) {
+                String name = entry.getKey();
+                String address = entry.getValue();
+                if (!visited.contains(name)) {
+                    visited.add(name);
+                    // Attempt to connect to nodes
+                    Socket tempSocket = new Socket(address.split(":")[0], Integer.parseInt(address.split(":")[1]));
+                    BufferedReader tempReader = new BufferedReader(new InputStreamReader(tempSocket.getInputStream()));
+                    BufferedWriter tempWriter = new BufferedWriter(new OutputStreamWriter(tempSocket.getOutputStream()));
+                    tempWriter.write("START 1 " + name + "\n");
+                    tempWriter.flush();
+                    // If connection was successful
+                    String startReply = tempReader.readLine();
+                    if (startReply.startsWith("START")) {
+
+                        tempWriter.write("PUT? " + key.split("\n").length + " " + value.split("\n").length + "\n" + key + value);
+                        tempWriter.flush();
+
+                        String reply = tempReader.readLine();
+                        if (reply.startsWith("SUCCESS")) {
+                            return true;
+                        } else {
+                            return storeInNearest(key, value, nearestNodes, visited);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e){
+            System.err.println("Exception during store in nearest: " + e);
+        }
+        return false;
+    }
+
+    private String getFromNearest(String key, HashMap<String, String> nearestNodes, Set<String> visited){
         try {
             for (HashMap.Entry<String, String> entry : nearestNodes.entrySet()) {
                 String name = entry.getKey();
@@ -127,13 +163,13 @@ public class TemporaryNode implements TemporaryNodeInterface {
                         if (reply.startsWith("VALUE")) {
                             return readValues(tempReader, Integer.parseInt(reply.split(" ")[1]));
                         } else {
-                            return askNearest(key, nearest(key, tempWriter, tempReader), visited);
+                            return getFromNearest(key, nearest(key, tempWriter, tempReader), visited);
                         }
                     }
                 }
             }
         } catch (Exception e){
-            System.err.println(e);
+            System.err.println("Exception during get from nearest: " + e);
         }
         return null;
     }
