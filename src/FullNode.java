@@ -49,8 +49,8 @@ public class FullNode implements FullNodeInterface {
     public boolean listen(String ipAddress, int portNumber) {
         try {
             // Open a server socket to listen for incoming connections
-            serverSocket = new ServerSocket(portNumber, 50, InetAddress.getByName(ipAddress));
             System.out.println("Passed in ip: " + ipAddress);
+            serverSocket = new ServerSocket(portNumber, 50, InetAddress.getByName(ipAddress));
             System.out.println("IP address: " + serverSocket.getLocalPort());
             System.out.println("IP address: " + serverSocket.getLocalSocketAddress());
             System.out.println("IP address: " + serverSocket.getInetAddress());
