@@ -66,14 +66,14 @@ public class FullNode implements FullNodeInterface {
         ArrayList<NodeInfo> list = new ArrayList<>();
         list.add(thisNode);
         networkMap.put(0, list);
-        System.out.println("Scanning for nodes on port 20000 - 20300");
-        for (int port = 20000; port <= 20050; port++) {
+        System.out.println("Scanning for nodes on port 20000 - 20100");
+        for (int port = 20000; port <= 20100; port++) {
             if (port != portNumber & !(checkUsedPort(port))) {
                 try {
                     System.out.println("establishing connection to: " + IpAddress + " port: " + port);
                     // Create a socket and attempt to connect to the target host and port
                     Socket socket = new Socket();
-                    socket.connect(new InetSocketAddress(IpAddress, port), 50);
+                    socket.connect(new InetSocketAddress(IpAddress, port), 100);
                     // Initialize reader and writer
                     BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
                     BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
