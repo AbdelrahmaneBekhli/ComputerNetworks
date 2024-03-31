@@ -72,8 +72,8 @@ public class FullNode implements FullNodeInterface {
                 try {
                     System.out.println("establishing connection to: " + IpAddress + " port: " + port);
                     // Create a socket and attempt to connect to the target host and port
-                    Socket socket = new Socket();
-                    socket.connect(new InetSocketAddress(IpAddress, port), 5);
+                    Socket socket = new Socket(IpAddress, port);
+                    //socket.connect(new InetSocketAddress(IpAddress, port), 5);
                     // Initialize reader and writer
                     BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
                     BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
