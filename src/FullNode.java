@@ -147,7 +147,7 @@ public class FullNode implements FullNodeInterface {
         return false;
     }
 
-    private boolean checkStart(BufferedReader reader, BufferedWriter writer){
+    private boolean checkStart(BufferedReader reader, BufferedWriter writer, Socket s){
         try {
             // Receive START message from the connecting node
             String startMessage = reader.readLine();
@@ -158,7 +158,7 @@ public class FullNode implements FullNodeInterface {
                 return true;
             } else {
                 // Invalid START message
-                System.err.println("Invalid START message received");
+                s.close();
             }
 
         } catch (Exception e) {
@@ -173,7 +173,7 @@ public class FullNode implements FullNodeInterface {
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
 
             // Receive START message from the connecting node
-            if (checkStart(reader, writer)){
+            if (checkStart(reader, writer, clientSocket)){
                 handleRequests(reader, writer, clientSocket);
             } else {
                 // Invalid START message
