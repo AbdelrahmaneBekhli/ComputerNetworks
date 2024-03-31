@@ -130,10 +130,6 @@ public class FullNode implements FullNodeInterface {
         return false;
     }
 
-    private void notified(String nodeName, String nodeAddress, Socket s){
-        updateNetworkMap(s, nodeName, Integer.parseInt(nodeAddress.split(":")[1]), nodeAddress);
-    }
-
     private boolean sendStart(BufferedReader reader, BufferedWriter writer){
         try {
             writer.write("START 1 "+ name + "\n");
@@ -213,7 +209,6 @@ public class FullNode implements FullNodeInterface {
                         String nodeAddress = reader.readLine();
                         System.out.println("name: " + nodeName);
                         System.out.println("address: " + nodeAddress);
-                        notified(nodeName, nodeAddress, socket);
                         updateNetworkMap(socket,nodeName, Integer.parseInt(nodeAddress.split(":")[1]), nodeAddress);
                         writer.write("NOTIFIED\n");
                         writer.flush();
@@ -242,6 +237,7 @@ public class FullNode implements FullNodeInterface {
                         // Respond with an error
                         writer.write("END Invalid request received\n");
                         writer.flush();
+                        socket.close();
                         break;
                 }
             }
@@ -266,7 +262,6 @@ public class FullNode implements FullNodeInterface {
         }
         String key = keyBuilder.toString();
         String value = valueBuilder.toString();
-        System.out.println("HASH KEY AT STORE: " + HashID.hexHash(key));
         ArrayList<NodeInfo> nearestNodes = findNearest(HashID.hexHash(key));
         boolean closet = false;
         for(NodeInfo n: nearestNodes) {
@@ -410,7 +405,9 @@ public class FullNode implements FullNodeInterface {
     }
 
     private void updateNetworkMap(Socket socket, String nodeName, int port, String address) {
+        System.out.println("hello");
         String nodeType = nodeName.split(",")[1];
+        System.out.println("hey");
         if(nodeType.startsWith("fullNode")) {
             NodeInfo node = new NodeInfo(socket, nodeName, port, getCurrentTime(), address);
             ArrayList<NodeInfo> list = new ArrayList<>();
