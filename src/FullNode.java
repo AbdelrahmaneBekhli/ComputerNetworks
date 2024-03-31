@@ -211,6 +211,8 @@ public class FullNode implements FullNodeInterface {
                     case "NOTIFY?":
                         String nodeName = reader.readLine();
                         String nodeAddress = reader.readLine();
+                        System.out.println("name: " + nodeName);
+                        System.out.println("address: " + nodeAddress);
                         notified(nodeName, nodeAddress, socket);
                         updateNetworkMap(socket,nodeName, Integer.parseInt(nodeAddress.split(":")[1]), nodeAddress);
                         writer.write("NOTIFIED\n");
@@ -234,6 +236,7 @@ public class FullNode implements FullNodeInterface {
                             message.append(parts[i]).append(" ");
                         }
                         removeNode(socket.getPort());
+                        socket.close();
                         break;
                     default:
                         // Respond with an error
