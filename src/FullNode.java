@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.RecursiveTask;
 
 // DO NOT EDIT starts
 interface FullNodeInterface {
@@ -147,7 +148,7 @@ public class FullNode implements FullNodeInterface {
         return false;
     }
 
-    private boolean checkStart(BufferedReader reader, BufferedWriter writer, Socket s){
+    private boolean checkStart(BufferedReader reader, BufferedWriter writer){
         try {
             // Receive START message from the connecting node
             String startMessage = reader.readLine();
@@ -158,7 +159,7 @@ public class FullNode implements FullNodeInterface {
                 return true;
             } else {
                 // Invalid START message
-                s.close();
+                return false;
             }
 
         } catch (Exception e) {
@@ -173,11 +174,11 @@ public class FullNode implements FullNodeInterface {
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
 
             // Receive START message from the connecting node
-            if (checkStart(reader, writer, clientSocket)){
+            if (checkStart(reader, writer)){
                 handleRequests(reader, writer, clientSocket);
             } else {
                 // Invalid START message
-                System.err.println("Invalid START message received");
+                clientSocket.close();
             }
         } catch (Exception e) {
             System.err.println("Exception during connection handling: " + e);
