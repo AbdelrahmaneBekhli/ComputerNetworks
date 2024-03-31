@@ -68,7 +68,6 @@ public class FullNode implements FullNodeInterface {
         networkMap.put(0, list);
         System.out.println("Scanning for nodes on port 20000 - 20300");
         for (int port = 20000; port <= 20300; port++) {
-            System.out.println("ip address: " + IpAddress + " port: " + port);
             if (port != portNumber & !(checkUsedPort(port))) {
                 try {
                     // Create a socket and attempt to connect to the target host and port
@@ -77,12 +76,17 @@ public class FullNode implements FullNodeInterface {
                     // Initialize reader and writer
                     BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
                     BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                    System.out.println("establishing connection to: ip address: " + IpAddress + " port: " + port);
+
 
                     //checks if the connection was successful
                     if(sendStart(reader, writer)) {
                         if (notifyNode(reader, writer)) {
+                            System.out.println("connected to: ip address: " + IpAddress + " port: " + port);
                             updateNetworkMap(socket,connectingNode, port, IpAddress+":"+port);
                         }
+                    } else{
+                        System.out.println("Not connected to ip address: " + IpAddress + " port: " + port);
                     }
                 } catch (Exception e) {
                     //ignore offline nodes
