@@ -453,9 +453,9 @@ public class FullNode implements FullNodeInterface {
                 } catch (Exception e) {
                     System.out.println("Error at update Network map: " + e);
                 }
+            printNetworkMap();
             }
         }
-        printNetworkMap();
     }
 
     private void removeNode(int toRemove) {
