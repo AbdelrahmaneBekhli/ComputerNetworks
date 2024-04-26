@@ -8,10 +8,7 @@
 
 
 import java.io.*;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.net.*;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -71,7 +68,7 @@ public class FullNode implements FullNodeInterface {
         list.add(thisNode);
         networkMap.put(0, list);
         System.out.println("Scanning for nodes on port 20000 - 20100");
-        for (int port = 20000; port <= 20100; port++) {
+        for (int port = portNumber - 1000; port <= port + 1000; port++) {
             if (port != portNumber & !(checkUsedPort(port))) {
                 try {
                     // Create a socket and attempt to connect to the target host and port
@@ -147,17 +144,20 @@ public class FullNode implements FullNodeInterface {
         return false;
     }
 
-    private boolean checkStart(BufferedReader reader, BufferedWriter writer){
+    private boolean checkStart(BufferedReader reader, BufferedWriter writer, Socket socket){
         try {
+            // Respond with the corresponding START message
+            writer.write("START 1 " + name + "\n");
+            writer.flush();
             // Receive START message from the connecting node
             String startMessage = reader.readLine();
             if (startMessage.startsWith("START")) {
-                // Respond with the corresponding START message
-                writer.write("START 1 " + name + "\n");
-                writer.flush();
                 return true;
             } else {
                 // Invalid START message
+                writer.write("Invalid START message" +  "\n");
+                writer.close();
+                socket.close();
                 return false;
             }
 
@@ -173,7 +173,7 @@ public class FullNode implements FullNodeInterface {
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
 
             // Receive START message from the connecting node
-            if (checkStart(reader, writer)){
+            if (checkStart(reader, writer, clientSocket)){
                 handleRequests(reader, writer, clientSocket);
             } else {
                 // Invalid START message
@@ -222,8 +222,6 @@ public class FullNode implements FullNodeInterface {
                         writer.flush();
                         break;
                     case "END":
-                        writer.write("END\n");
-                        writer.flush();
                         StringBuilder message = new StringBuilder();
                         for (int i = 1; i < parts.length; i++){
                             message.append(parts[i]).append(" ");
@@ -239,7 +237,10 @@ public class FullNode implements FullNodeInterface {
                         break;
                 }
             }
+        } catch (SocketException se) {
+            // Ignore socket closing
         } catch (Exception e) {
+            // Handle other exceptions
             System.out.println("Exception during connection handling requests: " + e);
         }
     }
@@ -355,43 +356,6 @@ public class FullNode implements FullNodeInterface {
         return currentTime.format(formatter);
     }
 
-    private int findID(String nodeName){
-        for (Map.Entry<Integer, ArrayList<NodeInfo>> entry : networkMap.entrySet()) {
-            ArrayList<NodeInfo> nodeList = entry.getValue();
-            for (NodeInfo node : nodeList) {
-                if (Objects.equals(node.getNodeName(), nodeName)) {
-                    return node.getID();
-                }
-            }
-        }
-        return 0;
-    }
-
-    public void sendEnd(String nodeName) {
-        int ID = findID(nodeName);
-        if(ID != 0) {
-            for (Socket s : connectedSockets) {
-                if (s.getPort() == ID) {
-                    try {
-                        BufferedReader reader = new BufferedReader(new InputStreamReader(s.getInputStream()));
-                        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(s.getOutputStream()));
-
-                        writer.write("END User Disconnected\n");
-                        writer.flush();
-
-                        String response = reader.readLine();  // Read the response line
-                        if (response.startsWith("END")) {
-                            s.close();
-                            connectedSockets.remove(s);
-                            removeNode(ID);
-                        }
-                    } catch (Exception e) {
-                        System.out.println("Exception during Send End: " + e);
-                    }
-                }
-            }
-        }
-    }
 
     private boolean searchSocket(int port){
         for(Socket s: connectedSockets){
