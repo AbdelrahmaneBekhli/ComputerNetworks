@@ -8,7 +8,10 @@
 
 
 import java.io.*;
-import java.net.*;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -219,6 +222,8 @@ public class FullNode implements FullNodeInterface {
                         writer.flush();
                         break;
                     case "END":
+                        writer.write("END\n");
+                        writer.flush();
                         StringBuilder message = new StringBuilder();
                         for (int i = 1; i < parts.length; i++){
                             message.append(parts[i]).append(" ");
@@ -234,10 +239,7 @@ public class FullNode implements FullNodeInterface {
                         break;
                 }
             }
-        } catch (SocketException se) {
-            // Ignore socket closing
         } catch (Exception e) {
-            // Handle other exceptions
             System.out.println("Exception during connection handling requests: " + e);
         }
     }
@@ -353,6 +355,43 @@ public class FullNode implements FullNodeInterface {
         return currentTime.format(formatter);
     }
 
+    private int findID(String nodeName){
+        for (Map.Entry<Integer, ArrayList<NodeInfo>> entry : networkMap.entrySet()) {
+            ArrayList<NodeInfo> nodeList = entry.getValue();
+            for (NodeInfo node : nodeList) {
+                if (Objects.equals(node.getNodeName(), nodeName)) {
+                    return node.getID();
+                }
+            }
+        }
+        return 0;
+    }
+
+    public void sendEnd(String nodeName) {
+        int ID = findID(nodeName);
+        if(ID != 0) {
+            for (Socket s : connectedSockets) {
+                if (s.getPort() == ID) {
+                    try {
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(s.getInputStream()));
+                        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(s.getOutputStream()));
+
+                        writer.write("END User Disconnected\n");
+                        writer.flush();
+
+                        String response = reader.readLine();  // Read the response line
+                        if (response.startsWith("END")) {
+                            s.close();
+                            connectedSockets.remove(s);
+                            removeNode(ID);
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Exception during Send End: " + e);
+                    }
+                }
+            }
+        }
+    }
 
     private boolean searchSocket(int port){
         for(Socket s: connectedSockets){
