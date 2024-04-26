@@ -190,32 +190,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
         }
         return null;
     }
-    public boolean echo(){
-        try {
-            writer.write("ECHO?\n");
-            writer.flush();
-            String response = reader.readLine();  // Read the response line
-            if (response != null && response.startsWith("OHCE")){
-                return true;
-            }
-        } catch (Exception e) {
-            System.err.println("Exception during echo operation: " + e);
-        }
-        return false;
-    }
-    public Boolean notifyRequest(String startingNodeName, String startingNodeAddress){
-        try{
-            writer.write("NOTIFY?\n" + startingNodeName + "\n" + startingNodeAddress + "\n");
-            writer.flush();
-            String response = reader.readLine();  // Read the response line
-            if (response.startsWith("NOTIFIED")){
-                return true;
-            }
-        } catch (Exception e){
-            System.out.println("Exception during notify operation: " + e);
-        }
-        return false;
-    }
+
     private HashMap<String, String> nearest(String key, BufferedWriter w, BufferedReader r){
         HashMap<String,String> nodes = new HashMap<>();
         try{
@@ -235,18 +210,5 @@ public class TemporaryNode implements TemporaryNodeInterface {
             System.err.println("Exception during nearest operation: " + e);
         }
         return nodes;
-    }
-    public void end(String reason){
-        try{
-            writer.write("END " + reason + "\n");
-            writer.flush();
-            String response = reader.readLine();  // Read the response line
-            if (response.startsWith("END")){
-                socket.close();
-                open = false;
-            }
-        } catch(Exception e){
-            System.err.println(e);
-        }
     }
 }
