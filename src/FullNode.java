@@ -68,7 +68,7 @@ public class FullNode implements FullNodeInterface {
         list.add(thisNode);
         networkMap.put(0, list);
         System.out.println("Scanning for nodes on port 20000 - 20100");
-        for (int port = portNumber - 1000; port <= port + 1000; port++) {
+        for (int port = 20000; port <= 20100; port++) {
             if (port != portNumber & !(checkUsedPort(port))) {
                 try {
                     // Create a socket and attempt to connect to the target host and port
@@ -144,20 +144,17 @@ public class FullNode implements FullNodeInterface {
         return false;
     }
 
-    private boolean checkStart(BufferedReader reader, BufferedWriter writer, Socket socket){
+    private boolean checkStart(BufferedReader reader, BufferedWriter writer){
         try {
-            // Respond with the corresponding START message
-            writer.write("START 1 " + name + "\n");
-            writer.flush();
             // Receive START message from the connecting node
             String startMessage = reader.readLine();
             if (startMessage.startsWith("START")) {
+                // Respond with the corresponding START message
+                writer.write("START 1 " + name + "\n");
+                writer.flush();
                 return true;
             } else {
                 // Invalid START message
-                writer.write("Invalid START message" +  "\n");
-                writer.close();
-                socket.close();
                 return false;
             }
 
@@ -173,7 +170,7 @@ public class FullNode implements FullNodeInterface {
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
 
             // Receive START message from the connecting node
-            if (checkStart(reader, writer, clientSocket)){
+            if (checkStart(reader, writer)){
                 handleRequests(reader, writer, clientSocket);
             } else {
                 // Invalid START message
