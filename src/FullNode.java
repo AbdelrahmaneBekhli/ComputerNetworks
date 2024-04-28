@@ -70,8 +70,8 @@ public class FullNode implements FullNodeInterface {
         ArrayList<NodeInfo> list = new ArrayList<>();
         list.add(thisNode);
         networkMap.put(0, list);
-        System.out.println("Scanning for nodes on port 20000 - 20100");
-        for (int port = 20000; port <= 20100; port++) {
+        System.out.println("Scanning for nodes on port " + (portNumber - 500) + " to " + (portNumber + 500));
+        for (int port = portNumber - 500; port <= portNumber + 500; port++) {
             if (port != portNumber & !(checkUsedPort(port))) {
                 try {
                     // Create a socket and attempt to connect to the target host and port
@@ -147,7 +147,7 @@ public class FullNode implements FullNodeInterface {
         return false;
     }
 
-    private boolean checkStart(BufferedReader reader, BufferedWriter writer){
+    private boolean checkStart(BufferedReader reader, BufferedWriter writer, Socket socket){
         try {
             // Receive START message from the connecting node
             String startMessage = reader.readLine();
@@ -155,9 +155,13 @@ public class FullNode implements FullNodeInterface {
                 // Respond with the corresponding START message
                 writer.write("START 1 " + name + "\n");
                 writer.flush();
+
                 return true;
             } else {
                 // Invalid START message
+                writer.write("END Invalid START message\n");
+                writer.flush();
+                socket.close();
                 return false;
             }
 
@@ -173,11 +177,8 @@ public class FullNode implements FullNodeInterface {
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
 
             // Receive START message from the connecting node
-            if (checkStart(reader, writer)){
+            if (checkStart(reader, writer, clientSocket)){
                 handleRequests(reader, writer, clientSocket);
-            } else {
-                // Invalid START message
-                clientSocket.close();
             }
         } catch (Exception e) {
             System.err.println("Exception during connection handling: " + e);
@@ -189,7 +190,7 @@ public class FullNode implements FullNodeInterface {
             // Handle requests from the connecting node
             String request;
             while ((request = reader.readLine()) != null) {
-                // Process the request here
+                // Process the request
                 String[] parts = request.split(" ");
                 String command = parts[0];
 
@@ -207,7 +208,8 @@ public class FullNode implements FullNodeInterface {
                     case "NOTIFY?":
                         String nodeName = reader.readLine();
                         String nodeAddress = reader.readLine();
-                        updateNetworkMap(socket,nodeName, Integer.parseInt(nodeAddress.split(":")[1]), nodeAddress);
+                        // Check if name is in a valid format
+                        updateNetworkMap(socket, nodeName, Integer.parseInt(nodeAddress.split(":")[1]), nodeAddress);
                         writer.write("NOTIFIED\n");
                         writer.flush();
                         break;
@@ -266,7 +268,6 @@ public class FullNode implements FullNodeInterface {
             if (Objects.equals(n.getNodeName(), name) && n.getPort() == portNumber) {
                 closet = true;
                 break;
-                // Store the key-value pair
             }
         }
         if (closet) {
@@ -320,8 +321,8 @@ public class FullNode implements FullNodeInterface {
                 distances.add(pair);
             }
         }
-        // Define a custom comparator to compare distances
 
+        // Define a custom comparator to compare distances [[0,node],[1,node2]] the integer is the custom comparator
         Comparator<ArrayList<Object>> comparator = new Comparator<ArrayList<Object>>() {
             @Override
             public int compare(ArrayList<Object> pair1, ArrayList<Object> pair2) {
@@ -355,6 +356,7 @@ public class FullNode implements FullNodeInterface {
         return currentTime.format(formatter);
     }
 
+    // Find node ID
     private int findID(String nodeName){
         for (Map.Entry<Integer, ArrayList<NodeInfo>> entry : networkMap.entrySet()) {
             ArrayList<NodeInfo> nodeList = entry.getValue();
@@ -367,32 +369,7 @@ public class FullNode implements FullNodeInterface {
         return 0;
     }
 
-    public void sendEnd(String nodeName) {
-        int ID = findID(nodeName);
-        if(ID != 0) {
-            for (Socket s : connectedSockets) {
-                if (s.getPort() == ID) {
-                    try {
-                        BufferedReader reader = new BufferedReader(new InputStreamReader(s.getInputStream()));
-                        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(s.getOutputStream()));
-
-                        writer.write("END User Disconnected\n");
-                        writer.flush();
-
-                        String response = reader.readLine();  // Read the response line
-                        if (response.startsWith("END")) {
-                            s.close();
-                            connectedSockets.remove(s);
-                            removeNode(ID);
-                        }
-                    } catch (Exception e) {
-                        System.out.println("Exception during Send End: " + e);
-                    }
-                }
-            }
-        }
-    }
-
+    // Find node's socket
     private boolean searchSocket(int port){
         for(Socket s: connectedSockets){
             if(s.getPort() == port){
