@@ -151,18 +151,20 @@ public class FullNode implements FullNodeInterface {
         try {
             // Receive START message from the connecting node
             String startMessage = reader.readLine();
-            if (startMessage.startsWith("START")) {
-                // Respond with the corresponding START message
-                writer.write("START 1 " + name + "\n");
-                writer.flush();
+            if(checkName(startMessage.split(" ")[2], writer, socket)) {
+                if (startMessage.startsWith("START")) {
+                    // Respond with the corresponding START message
+                    writer.write("START 1 " + name + "\n");
+                    writer.flush();
 
-                return true;
-            } else {
-                // Invalid START message
-                writer.write("END Invalid START message\n");
-                writer.flush();
-                socket.close();
-                return false;
+                    return true;
+                } else {
+                    // Invalid START message
+                    writer.write("END Invalid START message\n");
+                    writer.flush();
+                    socket.close();
+                    return false;
+                }
             }
 
         } catch (Exception e) {
@@ -209,9 +211,11 @@ public class FullNode implements FullNodeInterface {
                         String nodeName = reader.readLine();
                         String nodeAddress = reader.readLine();
                         // Check if name is in a valid format
-                        updateNetworkMap(socket, nodeName, Integer.parseInt(nodeAddress.split(":")[1]), nodeAddress);
-                        writer.write("NOTIFIED\n");
-                        writer.flush();
+                        if(checkName(nodeName, writer, socket)) {
+                            updateNetworkMap(socket, nodeName, Integer.parseInt(nodeAddress.split(":")[1]), nodeAddress);
+                            writer.write("NOTIFIED\n");
+                            writer.flush();
+                        }
                         break;
                     case "NEAREST?":
                         String key = parts[1];
@@ -244,6 +248,32 @@ public class FullNode implements FullNodeInterface {
         } catch (Exception e) {
             System.out.println("Exception during connection handling requests: " + e);
         }
+    }
+
+    private boolean checkName(String name, BufferedWriter writer, Socket socket) throws IOException {
+        try{
+            String email = name.split("@")[0];
+            try{
+                String details = name.split(":")[1];
+                try {
+                    String[] parts = details.split(",");
+                    return true;
+                } catch (Exception e){
+                    writer.write("END name must have a comma\n");
+                    writer.flush();
+                    socket.close();
+                }
+            } catch (Exception e){
+                writer.write("END name must have a colon\n");
+                writer.flush();
+                socket.close();
+            }
+        } catch (Exception e){
+            writer.write("END name must have a valid email address\n");
+            writer.flush();
+            socket.close();
+        }
+        return false;
     }
 
     private void store(String[] parts, BufferedReader reader, BufferedWriter writer) throws IOException {
